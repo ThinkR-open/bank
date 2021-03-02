@@ -247,7 +247,7 @@ system("docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5")
 
 #### With `{memoise}`
 
-```{r}
+```{r eval = TRUE}
 # Create a redis cache. 
 # The arguments will be passed to redux::hiredis
 redis_cache <- cache_redis$new()

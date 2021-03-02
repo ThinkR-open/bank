@@ -61,9 +61,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = mongo_cache)
 mf(5)
-#> [1] 717 178 548 579 885
+#> [1]  27 302 587 821 275
 mf(5)
-#> [1] 717 178 548 579 885
+#> [1]  27 302 587 821 275
 ```
 
 #### Inside `{shiny}`
@@ -231,6 +231,7 @@ docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5
 # Create a redis cache. 
 # The arguments will be passed to redux::hiredis
 redis_cache <- cache_redis$new()
+#> Loading required namespace: redux
 
 f <- function(x) {
   sample(1:1000, x)
@@ -238,7 +239,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = redis_cache)
 mf(5)
+#> [1] 401 990 939 390 468
 mf(5)
+#> [1] 401 990 939 390 468
 ```
 
 #### Inside `{shiny}`
@@ -315,7 +318,6 @@ mongo_cache <- cache_mongo$new(
 )
 
 redis_cache <- cache_redis$new()
-#> Loading required namespace: redux
 
 bench::mark(
   mem_cache = mem_cache$set("iris", big_iris),
@@ -328,10 +330,10 @@ bench::mark(
 #> # A tibble: 4 x 6
 #>   expression       min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>  <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache    27.73µs  30.62µs   25519.     5.02KB    0    
-#> 2 disk_cache    5.87ms   7.05ms     134.    18.45KB    0    
-#> 3 mongo_cache  41.42ms  64.88ms      13.0    2.52MB    0.540
-#> 4 redis_cache  27.53ms   39.4ms      24.6  569.09KB    0.503
+#> 1 mem_cache    24.64µs  49.66µs   17973.     5.02KB    0    
+#> 2 disk_cache    5.95ms   7.15ms     130.    18.45KB    0    
+#> 3 mongo_cache  46.97ms  63.95ms      15.3    2.52MB    0.805
+#> 4 redis_cache  25.89ms  37.14ms      25.9  536.58KB    0.262
 
 bench::mark(
   mem_cache = mem_cache$get("iris"),
@@ -343,10 +345,10 @@ bench::mark(
 #> # A tibble: 4 x 6
 #>   expression       min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>  <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache    13.75µs  17.82µs   41938.         0B    0    
-#> 2 disk_cache    2.14ms   2.79ms     330.   548.19KB    3.33 
-#> 3 mongo_cache   36.6ms  49.28ms      19.4    2.06MB    0.807
-#> 4 redis_cache  17.23ms   28.3ms      33.5    1.04MB    1.04
+#> 1 mem_cache    14.89µs  16.07µs   49337.         0B    0    
+#> 2 disk_cache    2.09ms   2.72ms     353.   548.19KB    3.56 
+#> 3 mongo_cache  35.76ms  50.89ms      18.6    2.06MB    0.774
+#> 4 redis_cache  15.57ms  30.14ms      31.7    1.03MB    0.646
 ```
 
 ``` bash
