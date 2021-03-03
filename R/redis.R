@@ -20,8 +20,8 @@ cache_redis <- R6::R6Class(
     #' version will be included. If given as TRUE,
     #' then we will query the Redis server (with INFO)
     #'  and extract the version number that way.
-    #' @param algo for {memoise} compatibility, the digest() algorithm
-    #' @param compress for {memoise} compatibility, should the data be compressed?
+    #' @param algo for `{memoise}` compatibility, the `digest()` algorithm
+    #' @param compress for `{memoise}` compatibility, should the data be compressed?
     #' @return A cache_redis object
     initialize = function(
       ...,
@@ -101,7 +101,7 @@ cache_redis <- R6::R6Class(
     },
     #' @description
     #' Function that runs an hash algo.
-    #' For compatibily with {memoise}
+    #' For compatibily with `{memoise}`
     #' @param ... the value to hash
     #' @return A function
     digest = function(...) digest::digest(..., algo = private$algo)

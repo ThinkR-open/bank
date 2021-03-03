@@ -51,9 +51,9 @@ version will be included. If given as TRUE,
 then we will query the Redis server (with INFO)
 and extract the version number that way.}
 
-\item{\code{algo}}{for {memoise} compatibility, the digest() algorithm}
+\item{\code{algo}}{for \code{{memoise}} compatibility, the \code{digest()} algorithm}
 
-\item{\code{compress}}{for {memoise} compatibility, should the data be compressed?}
+\item{\code{compress}}{for \code{{memoise}} compatibility, should the data be compressed?}
 }
 \if{html}{\out{</div>}}
 }
@@ -174,7 +174,7 @@ A list of keys
 \if{latex}{\out{\hypertarget{method-digest}{}}}
 \subsection{Method \code{digest()}}{
 Function that runs an hash algo.
-For compatibily with {memoise}
+For compatibily with \code{{memoise}}
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{cache_redis$digest(...)}\if{html}{\out{</div>}}
 }

@@ -12,8 +12,8 @@ cache_mongo <- R6::R6Class(
     #' @param url address of the mongodb server in mongo connection string URI format
     #' @param prefix string to prefix the collection name
     #' @param options	 additional connection options such as SSL keys/certs.
-    #' @param algo for {memoise} compatibility, the digest() algorithm
-    #' @param compress for {memoise} compatibility, should the data be compressed?
+    #' @param algo for `{memoise}` compatibility. The `digest()` algorithm.
+    #' @param compress for `{memoise}` compatibility. Should the data be compressed?
     #' @return A cache_mongo object
     initialize = function(
       db = "test",
@@ -150,7 +150,7 @@ cache_mongo <- R6::R6Class(
     },
     #' @description
     #' Function that runs an hash algo.
-    #' For compatibily with {memoise}
+    #' For compatibily with `{memoise}`.
     #' @param ... the value to hash
     #' @return A function
     digest = function(...) digest::digest(..., algo = private$algo)
