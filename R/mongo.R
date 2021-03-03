@@ -25,13 +25,30 @@ cache_mongo <- R6::R6Class(
         prefix = prefix,
         options = options
       )
+     # browser()
+      private$fs_file <- mongolite::mongo(
+        db = db,
+        collection = sprintf("%s.files", prefix),
+        url = url,
+        options = options
+      )
       private$algo <- algo
       private$compress <- compress
     },
     get = function(key) {
 
       if (self$has_key(key)){
-
+        #browser()
+        private$fs_file$update(
+          sprintf(
+            '{"metadata.key": "%s"}',
+            key
+          ),
+          sprintf(
+            '{"$set":{"metadata.lastAccessed": "%s"}}',
+            Sys.time()
+          )
+        )
         temp_file <- tempfile(pattern = key, fileext = ".RDS")
         # Handling the case where the value has been deleted in-between
         res <- tryCatch(
@@ -66,8 +83,8 @@ cache_mongo <- R6::R6Class(
         key,
         progress = FALSE,
         metadata = sprintf(
-          '{"key": "%s"}',
-          key
+          '{"key": "%s", "lastAccessed" : "%s"}',
+          key, Sys.time()
         )
       )
     },
@@ -100,6 +117,7 @@ cache_mongo <- R6::R6Class(
   ),
   private = list(
     interface = list(),
+    fs_file = list(),
     algo = character(0),
     compress = logical(0)
   )

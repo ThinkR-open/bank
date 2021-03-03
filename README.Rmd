@@ -28,6 +28,48 @@ The goal of `{bank}` is to provide alternative backends for caching with `{memoi
 remotes::install_github("thinkr-open/bank")
 ```
 
+## Some things to know before starting
+
+### Caching scope
+
+When using `{bank}` backends with `{shiny}`, caching will done at the app-level, in other words the cache is stored across sessions. 
+Be aware of this behavior if you have sensitive data inside your app, as this might imply data leakage. 
+
+See `?shiny::bindCache`
+
+> With an app-level cache scope, one user can benefit from the work done for another user's session. In most cases, this is the best way to get performance improvements from caching. However, in some cases, this could leak information between sessions. For example, if the cache key does not fully encompass the inputs used by the value, then data could leak between the sessions. Or if a user sees that a cached reactive returns its value very quickly, they may be able to infer that someone else has already used it with the same values.
+
+### Cache flushing
+
+As with any `{cachem}` compatible objects, the cache can be manually flushed using the `$reset()` method -- this will call `drop()` on MongoDB and `FLUSHALL` in Redis. 
+
+```{r}
+library(bank)
+mongo_cache <- cache_mongo$new(
+  db = "bank",
+  url = "mongodb://localhost:27066",
+  prefix = "sn"
+)
+
+mongo_cache$reset()
+```
+
+
+As `{bank}` relies on external backends, it's probably better to let the DBMS handle the flushing of cache.
+For example, in `redis.conf`, you can set :
+
+```
+maxmemory 2mb
+maxmemory-policy allkeys-lru
+```
+
+LRU (least recently used) will allow redis to flush the key based on when they were used.
+See <https://redis.io/topics/lru-cache>. 
+
+MongoDB doesn't come with a LRU mechanism, but you can set data to be ephemeral with [TTL index](https://docs.mongodb.com/manual/core/index-ttl/) inside your collection.
+
+`{bank}` also tries to help with that by updating a `lastAccessed` date metadata field whenever you `$get()` the key, meaning that you can implement your own caching strategy to evict least recently used cached objects. 
+
 ## Backends
 
 Note that if you want to use `{bank}` in a `{shiny}` app: 
@@ -231,6 +273,32 @@ generate_app <- function(cache_object){
 generate_app(mongo_cache)
 
 ```
+
+#### Flushing MongoDB cache using LRU
+
+All keys registered to MongoDB comes with a `metadata.lastAccessed` parameter. 
+Using this parameter, you'll be able to flush old cache if needed.
+
+```{r eval = TRUE}
+mongo <- mongolite::gridfs(
+  db = "bank",
+  url = "mongodb://localhost:27066",
+  prefix = "sn"
+)
+get_metadata <- function(mongo){
+  jsonlite::fromJSON(
+    mongo$find()$metadata
+  )
+}
+Sys.sleep(10)
+mf(5)
+get_metadata(mongo)
+
+Sys.sleep(10)
+mf(5)
+get_metadata(mongo)
+```
+
 
 ### Redis
 

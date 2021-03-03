@@ -17,6 +17,63 @@ The goal of `{bank}` is to provide alternative backends for caching with
 remotes::install_github("thinkr-open/bank")
 ```
 
+## Some things to know before starting
+
+### Caching scope
+
+When using `{bank}` backends with `{shiny}`, caching will done at the
+app-level, in other words the cache is stored across sessions. Be aware
+of this behavior if you have sensitive data inside your app, as this
+might imply data leakage.
+
+See `?shiny::bindCache`
+
+> With an app-level cache scope, one user can benefit from the work done
+> for another user’s session. In most cases, this is the best way to get
+> performance improvements from caching. However, in some cases, this
+> could leak information between sessions. For example, if the cache key
+> does not fully encompass the inputs used by the value, then data could
+> leak between the sessions. Or if a user sees that a cached reactive
+> returns its value very quickly, they may be able to infer that someone
+> else has already used it with the same values.
+
+### Cache flushing
+
+As with any `{cachem}` compatible objects, the cache can be manually
+flushed using the `$reset()` method – this will call `drop()` on MongoDB
+and `FLUSHALL` in Redis.
+
+``` r
+library(bank)
+mongo_cache <- cache_mongo$new(
+  db = "bank",
+  url = "mongodb://localhost:27066",
+  prefix = "sn"
+)
+
+mongo_cache$reset()
+```
+
+As `{bank}` relies on external backends, it’s probably better to let the
+DBMS handle the flushing of cache. For example, in `redis.conf`, you can
+set :
+
+    maxmemory 2mb
+    maxmemory-policy allkeys-lru
+
+LRU (least recently used) will allow redis to flush the key based on
+when they were used. See <https://redis.io/topics/lru-cache>.
+
+MongoDB doesn’t come with a LRU mechanism, but you can set data to be
+ephemeral with [TTL
+index](https://docs.mongodb.com/manual/core/index-ttl/) inside your
+collection.
+
+`{bank}` also tries to help with that by updating a `lastAccessed` date
+metadata field whenever you `$get()` the key, meaning that you can
+implement your own caching strategy to evict least recently used cached
+objects.
+
 ## Backends
 
 Note that if you want to use `{bank}` in a `{shiny}` app:
@@ -61,9 +118,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = mongo_cache)
 mf(5)
-#> [1]  27 302 587 821 275
+#> [1] 363 546  73 818 944
 mf(5)
-#> [1]  27 302 587 821 275
+#> [1] 363 546  73 818 944
 ```
 
 #### Inside `{shiny}`
@@ -217,6 +274,44 @@ generate_app <- function(cache_object){
 generate_app(mongo_cache)
 ```
 
+#### Flushing MongoDB cache using LRU
+
+All keys registered to MongoDB comes with a `metadata.lastAccessed`
+parameter. Using this parameter, you’ll be able to flush old cache if
+needed.
+
+``` r
+mongo <- mongolite::gridfs(
+  db = "bank",
+  url = "mongodb://localhost:27066",
+  prefix = "sn"
+)
+get_metadata <- function(mongo){
+  jsonlite::fromJSON(
+    mongo$find()$metadata
+  )
+}
+Sys.sleep(10)
+mf(5)
+#> [1] 363 546  73 818 944
+get_metadata(mongo)
+#> $key
+#> [1] "ea651131fb3af348c02d9a21d03270c0fe90649d93d2ed30fadd32334910167c2a3bad912b46b11c87b80d93abe06b4fead0d4f9971eef4bad946335037be8ee"
+#> 
+#> $lastAccessed
+#> [1] "2021-03-03 15:25:17"
+
+Sys.sleep(10)
+mf(5)
+#> [1] 363 546  73 818 944
+get_metadata(mongo)
+#> $key
+#> [1] "ea651131fb3af348c02d9a21d03270c0fe90649d93d2ed30fadd32334910167c2a3bad912b46b11c87b80d93abe06b4fead0d4f9971eef4bad946335037be8ee"
+#> 
+#> $lastAccessed
+#> [1] "2021-03-03 15:25:28"
+```
+
 ### Redis
 
 Launching a container with redis.
@@ -239,9 +334,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = redis_cache)
 mf(5)
-#> [1] 401 990 939 390 468
+#> [1] 588  21 213 663 668
 mf(5)
-#> [1] 401 990 939 390 468
+#> [1] 588  21 213 663 668
 ```
 
 #### Inside `{shiny}`
@@ -330,10 +425,10 @@ bench::mark(
 #> # A tibble: 4 x 6
 #>   expression       min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>  <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache    24.64µs  49.66µs   17973.     5.02KB    0    
-#> 2 disk_cache    5.95ms   7.15ms     130.    18.45KB    0    
-#> 3 mongo_cache  46.97ms  63.95ms      15.3    2.52MB    0.805
-#> 4 redis_cache  25.89ms  37.14ms      25.9  536.58KB    0.262
+#> 1 mem_cache    25.02µs  31.08µs   24025.     5.02KB    0    
+#> 2 disk_cache    5.68ms   6.51ms     147.    38.01KB    0    
+#> 3 mongo_cache  44.74ms  57.74ms      16.8    2.57MB    0.700
+#> 4 redis_cache  26.37ms  38.64ms      24.9  536.58KB    0.252
 
 bench::mark(
   mem_cache = mem_cache$get("iris"),
@@ -345,10 +440,10 @@ bench::mark(
 #> # A tibble: 4 x 6
 #>   expression       min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>  <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache    14.89µs  16.07µs   49337.         0B    0    
-#> 2 disk_cache    2.09ms   2.72ms     353.   548.19KB    3.56 
-#> 3 mongo_cache  35.76ms  50.89ms      18.6    2.06MB    0.774
-#> 4 redis_cache  15.57ms  30.14ms      31.7    1.03MB    0.646
+#> 1 mem_cache    13.48µs  14.87µs   53766.         0B    0    
+#> 2 disk_cache    2.24ms   2.69ms     353.   548.19KB    3.56 
+#> 3 mongo_cache  37.18ms  48.05ms      20.4    2.06MB    0.851
+#> 4 redis_cache  17.93ms  25.97ms      37.6    1.03MB    0.768
 ```
 
 ``` bash
