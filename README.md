@@ -5,6 +5,7 @@
 
 <!-- badges: start -->
 
+[![R-CMD-check](https://github.com/ThinkR-open/bank/workflows/R-CMD-check/badge.svg)](https://github.com/ThinkR-open/bank/actions)
 <!-- badges: end -->
 
 The goal of `{bank}` is to provide alternative backends for caching with
@@ -118,9 +119,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = mongo_cache)
 mf(5)
-#> [1] 363 546  73 818 944
+#> [1] 989 368 577 407 892
 mf(5)
-#> [1] 363 546  73 818 944
+#> [1] 989 368 577 407 892
 ```
 
 #### Inside `{shiny}`
@@ -293,23 +294,23 @@ get_metadata <- function(mongo){
 }
 Sys.sleep(10)
 mf(5)
-#> [1] 363 546  73 818 944
+#> [1] 989 368 577 407 892
 get_metadata(mongo)
 #> $key
 #> [1] "ea651131fb3af348c02d9a21d03270c0fe90649d93d2ed30fadd32334910167c2a3bad912b46b11c87b80d93abe06b4fead0d4f9971eef4bad946335037be8ee"
 #> 
 #> $lastAccessed
-#> [1] "2021-03-03 15:25:17"
+#> [1] "2021-03-03 15:44:12"
 
 Sys.sleep(10)
 mf(5)
-#> [1] 363 546  73 818 944
+#> [1] 989 368 577 407 892
 get_metadata(mongo)
 #> $key
 #> [1] "ea651131fb3af348c02d9a21d03270c0fe90649d93d2ed30fadd32334910167c2a3bad912b46b11c87b80d93abe06b4fead0d4f9971eef4bad946335037be8ee"
 #> 
 #> $lastAccessed
-#> [1] "2021-03-03 15:25:28"
+#> [1] "2021-03-03 15:44:22"
 ```
 
 ### Redis
@@ -334,9 +335,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = redis_cache)
 mf(5)
-#> [1] 588  21 213 663 668
+#> [1] 335 865  71 743 460
 mf(5)
-#> [1] 588  21 213 663 668
+#> [1] 335 865  71 743 460
 ```
 
 #### Inside `{shiny}`
@@ -425,10 +426,10 @@ bench::mark(
 #> # A tibble: 4 x 6
 #>   expression       min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>  <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache    25.02µs  31.08µs   24025.     5.02KB    0    
-#> 2 disk_cache    5.68ms   6.51ms     147.    38.01KB    0    
-#> 3 mongo_cache  44.74ms  57.74ms      16.8    2.57MB    0.700
-#> 4 redis_cache  26.37ms  38.64ms      24.9  536.58KB    0.252
+#> 1 mem_cache    27.03µs   47.7µs   17560.     5.02KB    0    
+#> 2 disk_cache    6.18ms   7.73ms     120.    18.45KB    0    
+#> 3 mongo_cache  51.22ms  67.69ms      12.8    2.52MB    0.534
+#> 4 redis_cache  24.38ms     37ms      20.2  536.58KB    0.204
 
 bench::mark(
   mem_cache = mem_cache$get("iris"),
@@ -440,10 +441,10 @@ bench::mark(
 #> # A tibble: 4 x 6
 #>   expression       min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>  <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache    13.48µs  14.87µs   53766.         0B    0    
-#> 2 disk_cache    2.24ms   2.69ms     353.   548.19KB    3.56 
-#> 3 mongo_cache  37.18ms  48.05ms      20.4    2.06MB    0.851
-#> 4 redis_cache  17.93ms  25.97ms      37.6    1.03MB    0.768
+#> 1 mem_cache    13.32µs  14.55µs   60471.         0B    0    
+#> 2 disk_cache    2.15ms   2.57ms     369.   548.19KB    3.73 
+#> 3 mongo_cache  38.25ms  55.12ms      15.1    2.06MB    0.628
+#> 4 redis_cache  20.75ms  30.13ms      32.0    1.03MB    0.653
 ```
 
 ``` bash

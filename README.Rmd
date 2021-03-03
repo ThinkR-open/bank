@@ -17,6 +17,7 @@ knitr::opts_chunk$set(
 # bank
 
 <!-- badges: start -->
+[![R-CMD-check](https://github.com/ThinkR-open/bank/workflows/R-CMD-check/badge.svg)](https://github.com/ThinkR-open/bank/actions)
 <!-- badges: end -->
 
 The goal of `{bank}` is to provide alternative backends for caching with `{memoise}` & `{shiny}`.
