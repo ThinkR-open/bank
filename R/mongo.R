@@ -1,7 +1,20 @@
+#' A Caching object for MongoDB
+#'
+#' Create a cache backend with MongoDB.
+#'
 #' @export
 cache_mongo <- R6::R6Class(
   "cache_mongo",
   public = list(
+    #' @description
+    #' Start a new mongo cache
+    #' @param db name of database
+    #' @param url address of the mongodb server in mongo connection string URI format
+    #' @param prefix string to prefix the collection name
+    #' @param options	 additional connection options such as SSL keys/certs.
+    #' @param algo for {memoise} compatibility, the digest() algorithm
+    #' @param compress for {memoise} compatibility, should the data be compressed?
+    #' @return A cache_mongo object
     initialize = function(
       db = "test",
       url = "mongodb://localhost",
@@ -35,6 +48,10 @@ cache_mongo <- R6::R6Class(
       private$algo <- algo
       private$compress <- compress
     },
+    #' @description
+    #' Get a key from the cache
+    #' @param key Name of the key.
+    #' @return The value stored using the `key`
     get = function(key) {
 
       if (self$has_key(key)){
@@ -74,6 +91,11 @@ cache_mongo <- R6::R6Class(
         )
       }
     },
+    #' @description
+    #' Set a key in the cache
+    #' @param key Name of the key.
+    #' @param value Value to store
+    #' @return Used for side effect
     set = function(key, value) {
       temp_file <- tempfile(pattern = key, fileext = ".RDS")
       on.exit(unlink(temp_file))
@@ -88,6 +110,10 @@ cache_mongo <- R6::R6Class(
         )
       )
     },
+    #' @description
+    #' Does the cache contains a given key?
+    #' @param key Name of the key.
+    #' @return TRUE/FALSE
     has_key = function(key) {
       nrow(
         private$interface$find(
@@ -98,9 +124,16 @@ cache_mongo <- R6::R6Class(
         )
       )  > 0
     },
+    #' @description
+    #' Clear all the cache
+    #' @return Used for side-effect
     reset = function() {
       private$interface$drop()
     },
+    #' @description
+    #' Remove a key/value pair
+    #' @param key Name of the key.
+    #' @return Used for side-effect
     remove = function(key) {
       private$interface$remove(
         sprintf(
@@ -109,10 +142,17 @@ cache_mongo <- R6::R6Class(
         )
       )
     },
+    #' @description
+    #' List all the keys in the cache
+    #' @return A list of keys
     keys = function() {
       private$interface$find()$name
     },
-    # For compatibily with {memoise}
+    #' @description
+    #' Function that runs an hash algo.
+    #' For compatibily with {memoise}
+    #' @param ... the value to hash
+    #' @return A function
     digest = function(...) digest::digest(..., algo = private$algo)
   ),
   private = list(
