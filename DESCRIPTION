@@ -14,7 +14,7 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports: 
-    R6
+    R6 (>= 2.5.0)
 Suggests: 
-    mongolite,
-    redux
+    mongolite (>= 2.2.0),
+    redux (>= 1.1.0)
