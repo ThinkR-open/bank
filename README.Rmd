@@ -4,7 +4,7 @@ output: github_document
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-```{r, include = FALSE}
+```{r, include = FALSE, error = TRUE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -12,6 +12,8 @@ knitr::opts_chunk$set(
   out.width = "100%", 
   eval = FALSE
 )
+
+system("docker stop mongobank redisbank")
 ```
 
 # bank
@@ -90,11 +92,12 @@ For now, the following backends are supported:
 Launching a container with mongo. 
 
 ```{bash}
-docker run --rm --name mongobank -d -p 27066:27017 mongo:3.4
+docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:3.4
 ```
 
 ```{r echo = FALSE, eval = TRUE}
-system("docker run --rm --name mongobank -d -p 27066:27017 mongo:3.4")
+system("docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:3.4")
+Sys.sleep(10)
 ```
 
 
@@ -109,7 +112,7 @@ library(bank)
 # The arguments will be passed to mongo::gridfs
 mongo_cache <- cache_mongo$new(
   db = "bank",
-  url = "mongodb://localhost:27066",
+  url = "mongodb://bebop:aloula@localhost:27066",
   prefix = "sn"
 )
 
@@ -283,13 +286,11 @@ Using this parameter, you'll be able to flush old cache if needed.
 ```{r eval = TRUE}
 mongo <- mongolite::gridfs(
   db = "bank",
-  url = "mongodb://localhost:27066",
+  url = "mongodb://bebop:aloula@localhost:27066",
   prefix = "sn"
 )
 get_metadata <- function(mongo){
-  jsonlite::fromJSON(
-    mongo$find()$metadata
-  )
+  purrr::map(mongo$find()$metadata, jsonlite::fromJSON)
 }
 Sys.sleep(10)
 mf(5)
@@ -306,11 +307,11 @@ get_metadata(mongo)
 Launching a container with redis. 
 
 ```{bash}
-docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5
+docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5 --requirepass bebopalula
 ```
 
 ```{r echo = FALSE, eval = TRUE}
-system("docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5")
+system("docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5 --requirepass bebopalula")
 ```
 
 
@@ -319,7 +320,7 @@ system("docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5")
 ```{r eval = TRUE}
 # Create a redis cache. 
 # The arguments will be passed to redux::hiredis
-redis_cache <- cache_redis$new()
+redis_cache <- cache_redis$new(password = "bebopalula")
 
 f <- function(x) {
   sample(1:1000, x)
@@ -390,11 +391,11 @@ disk_cache <- cache_disk()
 
 mongo_cache <- cache_mongo$new(
   db = "bank",
-  url = "mongodb://localhost:27066",
+  url = "mongodb://bebop:aloula@localhost:27066",
   prefix = "sn"
 )
 
-redis_cache <- cache_redis$new()
+redis_cache <- cache_redis$new(password = "bebopalula")
 
 bench::mark(
   mem_cache = mem_cache$set("iris", big_iris),

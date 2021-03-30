@@ -94,7 +94,7 @@ For now, the following backends are supported:
 Launching a container with mongo.
 
 ``` bash
-docker run --rm --name mongobank -d -p 27066:27017 mongo:3.4
+docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:3.4
 ```
 
 #### With `{memoise}`
@@ -108,7 +108,7 @@ library(bank)
 # The arguments will be passed to mongo::gridfs
 mongo_cache <- cache_mongo$new(
   db = "bank",
-  url = "mongodb://localhost:27066",
+  url = "mongodb://bebop:aloula@localhost:27066",
   prefix = "sn"
 )
 #> Loading required namespace: mongolite
@@ -119,9 +119,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = mongo_cache)
 mf(5)
-#> [1] 989 368 577 407 892
+#> [1]  34 831 763 518 609
 mf(5)
-#> [1] 989 368 577 407 892
+#> [1]  34 831 763 518 609
 ```
 
 #### Inside `{shiny}`
@@ -284,33 +284,33 @@ needed.
 ``` r
 mongo <- mongolite::gridfs(
   db = "bank",
-  url = "mongodb://localhost:27066",
+  url = "mongodb://bebop:aloula@localhost:27066",
   prefix = "sn"
 )
 get_metadata <- function(mongo){
-  jsonlite::fromJSON(
-    mongo$find()$metadata
-  )
+  purrr::map(mongo$find()$metadata, jsonlite::fromJSON)
 }
 Sys.sleep(10)
 mf(5)
-#> [1] 989 368 577 407 892
+#> [1]  34 831 763 518 609
 get_metadata(mongo)
-#> $key
+#> [[1]]
+#> [[1]]$key
 #> [1] "ea651131fb3af348c02d9a21d03270c0fe90649d93d2ed30fadd32334910167c2a3bad912b46b11c87b80d93abe06b4fead0d4f9971eef4bad946335037be8ee"
 #> 
-#> $lastAccessed
-#> [1] "2021-03-03 15:44:12"
+#> [[1]]$lastAccessed
+#> [1] "2021-03-30 09:10:04"
 
 Sys.sleep(10)
 mf(5)
-#> [1] 989 368 577 407 892
+#> [1]  34 831 763 518 609
 get_metadata(mongo)
-#> $key
+#> [[1]]
+#> [[1]]$key
 #> [1] "ea651131fb3af348c02d9a21d03270c0fe90649d93d2ed30fadd32334910167c2a3bad912b46b11c87b80d93abe06b4fead0d4f9971eef4bad946335037be8ee"
 #> 
-#> $lastAccessed
-#> [1] "2021-03-03 15:44:22"
+#> [[1]]$lastAccessed
+#> [1] "2021-03-30 09:10:14"
 ```
 
 ### Redis
@@ -318,7 +318,7 @@ get_metadata(mongo)
 Launching a container with redis.
 
 ``` bash
-docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5
+docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5 --requirepass bebopalula
 ```
 
 #### With `{memoise}`
@@ -326,7 +326,7 @@ docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5
 ``` r
 # Create a redis cache. 
 # The arguments will be passed to redux::hiredis
-redis_cache <- cache_redis$new()
+redis_cache <- cache_redis$new(password = "bebopalula")
 #> Loading required namespace: redux
 
 f <- function(x) {
@@ -335,9 +335,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = redis_cache)
 mf(5)
-#> [1] 335 865  71 743 460
+#> [1] 433 551 342 130 265
 mf(5)
-#> [1] 335 865  71 743 460
+#> [1] 433 551 342 130 265
 ```
 
 #### Inside `{shiny}`
@@ -409,11 +409,11 @@ disk_cache <- cache_disk()
 
 mongo_cache <- cache_mongo$new(
   db = "bank",
-  url = "mongodb://localhost:27066",
+  url = "mongodb://bebop:aloula@localhost:27066",
   prefix = "sn"
 )
 
-redis_cache <- cache_redis$new()
+redis_cache <- cache_redis$new(password = "bebopalula")
 
 bench::mark(
   mem_cache = mem_cache$set("iris", big_iris),
@@ -426,10 +426,10 @@ bench::mark(
 #> # A tibble: 4 x 6
 #>   expression       min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>  <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache    27.03µs   47.7µs   17560.     5.02KB    0    
-#> 2 disk_cache    6.18ms   7.73ms     120.    18.45KB    0    
-#> 3 mongo_cache  51.22ms  67.69ms      12.8    2.52MB    0.534
-#> 4 redis_cache  24.38ms     37ms      20.2  536.58KB    0.204
+#> 1 mem_cache     24.6µs  33.77µs   19585.     5.02KB    0    
+#> 2 disk_cache    6.33ms   8.23ms      94.0   18.45KB    0    
+#> 3 mongo_cache  49.27ms  67.34ms      11.6    2.52MB    0.482
+#> 4 redis_cache  26.91ms  36.95ms      21.3  536.58KB    0.215
 
 bench::mark(
   mem_cache = mem_cache$get("iris"),
@@ -441,10 +441,10 @@ bench::mark(
 #> # A tibble: 4 x 6
 #>   expression       min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>  <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache    13.32µs  14.55µs   60471.         0B    0    
-#> 2 disk_cache    2.15ms   2.57ms     369.   548.19KB    3.73 
-#> 3 mongo_cache  38.25ms  55.12ms      15.1    2.06MB    0.628
-#> 4 redis_cache  20.75ms  30.13ms      32.0    1.03MB    0.653
+#> 1 mem_cache    14.45µs  20.17µs   38244.         0B    0    
+#> 2 disk_cache    2.13ms   2.66ms     335.   548.19KB    3.38 
+#> 3 mongo_cache  41.14ms  60.34ms      15.0    2.06MB    0.624
+#> 4 redis_cache     19ms  30.32ms      25.9    1.03MB    0.529
 ```
 
 ``` bash
