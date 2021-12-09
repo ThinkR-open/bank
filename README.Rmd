@@ -9,11 +9,11 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
   fig.path = "man/figures/README-",
-  out.width = "100%", 
+  out.width = "100%",
   eval = FALSE
 )
 
-system("docker stop mongobank redisbank")
+system("docker stop mongobank redisbank postgresbank")
 ```
 
 # bank
@@ -44,7 +44,7 @@ See `?shiny::bindCache`
 
 ### Cache flushing
 
-As with any `{cachem}` compatible objects, the cache can be manually flushed using the `$reset()` method -- this will call `drop()` on MongoDB and `FLUSHALL` in Redis. 
+As with any `{cachem}` compatible objects, the cache can be manually flushed using the `$reset()` method -- this will call `drop()` on MongoDb, `FLUSHALL` in Redis, & `DBI::dbRemoveTable()` + `DBI::dbCreateTable()` with Postgres. 
 
 ```{r}
 library(bank)
@@ -71,7 +71,11 @@ See <https://redis.io/topics/lru-cache>.
 
 MongoDB doesn't come with a LRU mechanism, but you can set data to be ephemeral with [TTL index](https://docs.mongodb.com/manual/core/index-ttl/) inside your collection.
 
-`{bank}` also tries to help with that by updating a `lastAccessed` date metadata field whenever you `$get()` the key, meaning that you can implement your own caching strategy to evict least recently used cached objects. 
+`{bank}` also tries to help with that by updating a `lastAccessed` date metadata field in Mongo whenever you `$get()` the key, meaning that you can implement your own caching strategy to evict least recently used cached objects. 
+
+### Postgre limitation
+
+Postgre `bytea` column can only store up to 1GB elements, so you can't write a cache that's > 1GB. 
 
 ## Backends
 
@@ -87,6 +91,8 @@ For now, the following backends are supported:
 
 + [Redis](#redis)
 
++ [Postgre](#postgres)
+
 ### Mongo
 
 Launching a container with mongo. 
@@ -97,7 +103,7 @@ docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME
 
 ```{r echo = FALSE, eval = TRUE}
 system("docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:3.4")
-Sys.sleep(10)
+Sys.sleep(20)
 ```
 
 
@@ -108,7 +114,7 @@ First, the `cache_mongo` can be used
 ```{r eval = TRUE}
 library(memoise)
 library(bank)
-# Create a mongo cache. 
+# Create a mongo cache.
 # The arguments will be passed to mongo::gridfs
 mongo_cache <- cache_mongo$new(
   db = "bank",
@@ -133,26 +139,25 @@ Here is a first simple application that shows you the basics :
 library(shiny)
 ui <- fluidPage(
   # Creating a slider input that will be used as a cache key
-  sliderInput("nrow", "NROW", 1, 32, 32), 
+  sliderInput("nrow", "NROW", 1, 32, 32),
   # Plotting a piece of mtcars
   plotOutput("plot")
 )
 
-server <- function(input, output, session){
-  
-  output$plot <- renderCachedPlot({
-    # Pretending this takes a long time
-    Sys.sleep(2)
-    plot(mtcars[1:input$nrow, ])
-    
-  }, cacheKeyExpr = list(
-    # Defining the cache key
-    input$nrow
-  ),
-  # Using our mongo cache
-  cache = mongo_cache
+server <- function(input, output, session) {
+  output$plot <- renderCachedPlot(
+    {
+      # Pretending this takes a long time
+      Sys.sleep(2)
+      plot(mtcars[1:input$nrow, ])
+    },
+    cacheKeyExpr = list(
+      # Defining the cache key
+      input$nrow
+    ),
+    # Using our mongo cache
+    cache = mongo_cache
   )
-  
 }
 shinyApp(ui, server)
 ```
@@ -167,11 +172,11 @@ Let's try a more complex application:
 # We'll put everything in a function so that it can later be reused with other backends
 library(magrittr)
 
-generate_app <- function(cache_object){
+generate_app <- function(cache_object) {
   ui <- fluidPage(
     h1(
       sprintf(
-        "Caching in an external DB using %s", 
+        "Caching in an external DB using %s",
         deparse(
           substitute(cache_object)
         )
@@ -188,94 +193,87 @@ generate_app <- function(cache_object){
       mainPanel = mainPanel(
         # Outputing the reactive and a plot
         verbatimTextOutput("txt"),
-        plotOutput("plot"), 
+        plotOutput("plot"),
         # If you care about listing the cache keys
         uiOutput("keys")
       )
     )
   )
-  
-  server <- function(
-    input, 
-    output, 
-    session
-  ){
-    
-    # Our plot, cached using the cache object and 
+
+  server <- function(input,
+                     output,
+                     session) {
+
+    # Our plot, cached using the cache object and
     # watching the nrow
-    output$plot <- renderCachedPlot({
-      
-      showNotification(
-        h2("I'm computing the plot"), 
-        type = "message"
-      )
-      
-      # Fake long computation 
-      Sys.sleep(2)
-      
-      # Plot
-      plot(mtcars[1:input$nrow, ])
-      
-    }, 
-    # We cache on the input$nrow
-    cacheKeyExpr = list(
-      input$nrow
-    ), 
-    # The cache object is used here
-    cache = cache_object
+    output$plot <- renderCachedPlot(
+      {
+        showNotification(
+          h2("I'm computing the plot"),
+          type = "message"
+        )
+
+        # Fake long computation
+        Sys.sleep(2)
+
+        # Plot
+        plot(mtcars[1:input$nrow, ])
+      },
+      # We cache on the input$nrow
+      cacheKeyExpr = list(
+        input$nrow
+      ),
+      # The cache object is used here
+      cache = cache_object
     )
-    
+
     rc <- reactive({
-      
       showNotification(
-        h2("I'm computing the reactive()"), 
+        h2("I'm computing the reactive()"),
         type = "message"
       )
-      # Fake long computation 
+      # Fake long computation
       Sys.sleep(2)
-      
+
       input$nrow * 100
-      
     }) %>%
       # Using bindCache() require shiny > 1.6.0
       bindCache(
-        input$nrow, 
+        input$nrow,
         cache = cache_object
       )
-    
+
     output$txt <- renderText({
       rc()
     })
-    
+
     keys <- reactive({
       # Listing the keys
       invalidateLater(500)
       cache_object$keys()
     })
-    
+
     output$keys <- renderUI({
       tags$ul(
         lapply(keys(), tags$li)
       )
     })
-    
-    observeEvent( input$clear , {
+
+    observeEvent(input$clear, {
       # Sometime you might want to remove everything from the cache
       cache_object$reset()
-      
+
       showNotification(
-        h2("Cache reset"), 
+        h2("Cache reset"),
         type = "message"
       )
-      
     })
   }
-  
+
   shinyApp(ui, server)
 }
 
 generate_app(mongo_cache)
-
 ```
 
 #### Flushing MongoDB cache using LRU
@@ -289,7 +287,7 @@ mongo <- mongolite::gridfs(
   url = "mongodb://bebop:aloula@localhost:27066",
   prefix = "sn"
 )
-get_metadata <- function(mongo){
+get_metadata <- function(mongo) {
   purrr::map(mongo$find()$metadata, jsonlite::fromJSON)
 }
 Sys.sleep(10)
@@ -312,13 +310,14 @@ docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5 --requirepass bebop
 
 ```{r echo = FALSE, eval = TRUE}
 system("docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5 --requirepass bebopalula")
+Sys.sleep(20)
 ```
 
 
 #### With `{memoise}`
 
 ```{r eval = TRUE}
-# Create a redis cache. 
+# Create a redis cache.
 # The arguments will be passed to redux::hiredis
 redis_cache <- cache_redis$new(password = "bebopalula")
 
@@ -338,26 +337,25 @@ Here is a first simple application that shows you the basics :
 ```{r}
 ui <- fluidPage(
   # Creating a slider input that will be used as a cache key
-  sliderInput("nrow", "NROW", 1, 32, 32), 
+  sliderInput("nrow", "NROW", 1, 32, 32),
   # Plotting a piece of mtcars
   plotOutput("plot")
 )
 
-server <- function(input, output, session){
-  
-  output$plot <- renderCachedPlot({
-    # Pretending this takes a long time
-    Sys.sleep(2)
-    plot(mtcars[1:input$nrow, ])
-    
-  }, cacheKeyExpr = list(
-    # Defining the cache key
-    input$nrow
-  ),
-  # Using our redis cache
-  cache = redis_cache
+server <- function(input, output, session) {
+  output$plot <- renderCachedPlot(
+    {
+      # Pretending this takes a long time
+      Sys.sleep(2)
+      plot(mtcars[1:input$nrow, ])
+    },
+    cacheKeyExpr = list(
+      # Defining the cache key
+      input$nrow
+    ),
+    # Using our redis cache
+    cache = redis_cache
   )
-  
 }
 shinyApp(ui, server)
 ```
@@ -367,6 +365,78 @@ For the larger app:
 ```{r}
 generate_app(redis_cache)
 ```
+
+### Postgres
+
+Launching a container with postgres. 
+
+```{bash}
+docker run --rm --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d -p 5433:5432 postgres
+```
+
+```{r echo = FALSE, eval = TRUE}
+system("docker run --rm --name postgresbank -e POSTGRES_PASSWORD=mysecretpassword -d -p 5433:5432 postgres")
+Sys.sleep(20)
+```
+
+#### With `{memoise}`
+
+```{r eval = TRUE}
+# Create a postgres cache.
+# The arguments will be passed to DBI::dbConnect(RPostgres::Postgres(), ...)
+postgres_cache <- cache_postgres$new(
+  dbname = "postgres",
+  host = "localhost",
+  port = 5433,
+  user = "postgres",
+  password = "mysecretpassword"
+)
+
+f <- function(x) {
+  sample(1:1000, x)
+}
+
+mf <- memoise(f, cache = postgres_cache)
+mf(5)
+mf(5)
+```
+
+#### Inside `{shiny}`
+
+Here is a first simple application that shows you the basics :
+
+```{r}
+ui <- fluidPage(
+  # Creating a slider input that will be used as a cache key
+  sliderInput("nrow", "NROW", 1, 32, 32),
+  # Plotting a piece of mtcars
+  plotOutput("plot")
+)
+
+server <- function(input, output, session) {
+  output$plot <- renderCachedPlot(
+    {
+      # Pretending this takes a long time
+      Sys.sleep(2)
+      plot(mtcars[1:input$nrow, ])
+    },
+    cacheKeyExpr = list(
+      # Defining the cache key
+      input$nrow
+    ),
+    # Using our postgres cache
+    cache = postgres_cache
+  )
+}
+shinyApp(ui, server)
+```
+
+For the larger app: 
+
+```{r}
+generate_app(postgres_cache)
+```
+
 
 ## Chosing a cache method
 
@@ -397,12 +467,21 @@ mongo_cache <- cache_mongo$new(
 
 redis_cache <- cache_redis$new(password = "bebopalula")
 
+postgres_cache <- cache_postgres$new(
+  dbname = "postgres",
+  host = "localhost",
+  port = 5433,
+  user = "postgres",
+  password = "mysecretpassword"
+)
+
 bench::mark(
   mem_cache = mem_cache$set("iris", big_iris),
   disk_cache = disk_cache$set("iris", big_iris),
   mongo_cache = mongo_cache$set("iris", big_iris),
   redis_cache = redis_cache$set("iris", big_iris),
-  check = FALSE, 
+  postgres_cache = postgres_cache$set("iris", big_iris),
+  check = FALSE,
   iterations = 100
 )
 
@@ -411,17 +490,17 @@ bench::mark(
   disk_cache = disk_cache$get("iris"),
   mongo_cache = mongo_cache$get("iris"),
   redis_cache = redis_cache$get("iris"),
+  postgres_cache = postgres_cache$get("iris"),
   iterations = 100
 )
-
 ```
 
 ```{bash}
-docker stop mongobank redisbank
+docker stop mongobank redisbank postgresbank
 ```
 
 ```{r echo = FALSE, eval = TRUE}
-system("docker stop mongobank redisbank")
+system("docker stop mongobank redisbank postgresbank")
 ```
 
 ## You want another backend?
