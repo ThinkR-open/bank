@@ -1,3 +1,7 @@
+# bank 0.0.0.9002
+
+* Now with unit tests (#3)
+
 # bank 0.0.0.9001
 
 * Postgres is now available as a backend (#2)
