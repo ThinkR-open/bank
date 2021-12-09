@@ -23,13 +23,11 @@ cache_redis <- R6::R6Class(
     #' @param algo for `{memoise}` compatibility, the `digest()` algorithm
     #' @param compress for `{memoise}` compatibility, should the data be compressed?
     #' @return A cache_redis object
-    initialize = function(
-      ...,
-      version = NULL,
-      algo = "sha512",
-      compress = FALSE
-    ){
-      if (!requireNamespace("redux")){
+    initialize = function(...,
+                          version = NULL,
+                          algo = "sha512",
+                          compress = FALSE) {
+      if (!requireNamespace("redux")) {
         stop(
           paste(
             "The {redux} package has to be installed before using `cache_redis`.",
@@ -51,7 +49,7 @@ cache_redis <- R6::R6Class(
     #' @return The value stored using the `key`
     get = function(key) {
       res <- private$interface$GET(key)
-      if (is.null(res)){
+      if (is.null(res)) {
         return(
           structure(list(), class = "key_missing")
         )
@@ -78,7 +76,7 @@ cache_redis <- R6::R6Class(
     #' @param key Name of the key.
     #' @return TRUE/FALSE
     has_key = function(key) {
-      private$interface$EXISTS(key)
+      as.logical(private$interface$EXISTS(key))
     },
     #' @description
     #' Clear all the cache
@@ -112,4 +110,3 @@ cache_redis <- R6::R6Class(
     compress = logical(0)
   )
 )
-

@@ -190,7 +190,7 @@ cache_postgres <- R6::R6Class(
     #' @param key Name of the key.
     #' @return Used for side-effect
     remove = function(key) {
-      DBI::dbGetQuery(
+      DBI::dbExecute(
         private$interface,
         sprintf(
           "DELETE FROM %s WHERE id = '%s';",
