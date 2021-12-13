@@ -1,13 +1,13 @@
 #' A Caching object for postgres
 #'
-#' Create a cache backend with redis
+#' Create a cache backend with postgres
 #'
 #' @export
 cache_postgres <- R6::R6Class(
   "cache_postgres",
   public = list(
     #' @description
-    #' Start a new redis cache
+    #' Start a new postgres cache
     #' @param ... Parameters passes do DBI::dbConnect(RPostgres::Postgres(), ...)
     #' @param cache_table On `initialize()`, the cache object will create a table
     #' to store the cache. Default name is `bankrcache`. Change it if you already
@@ -31,7 +31,7 @@ cache_postgres <- R6::R6Class(
       if (!requireNamespace("DBI")) {
         stop(
           paste(
-            "The {DBI} package has to be installed before using `cache_redis`.",
+            "The {DBI} package has to be installed before using `cache_postgres`.",
             "Please install it first, for example with install.packages('DBI').",
             sep = "\n"
           )
