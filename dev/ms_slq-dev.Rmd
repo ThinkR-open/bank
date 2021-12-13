@@ -1,0 +1,340 @@
+---
+title: "Implementing MS SQL Server"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r development, include = FALSE}
+library(testthat)
+```
+
+# Calculate the median of a vector
+
+```{r function}
+#' A Caching object for Microsoft SQL Server
+#'
+#' Create a cache backend Microsoft SQL Server 
+#'
+#' @export
+cache_ms_sql <- R6::R6Class(
+  "cache_ms_sql",
+  public = list(
+    #' @description
+    #' Start a new Microsoft SQL Server cache
+    #' @param ... Parameters passes do DBI::dbConnect(odbc::odbc(), ...)
+    #' @param cache_table On `initialize()`, the cache object will create a table
+    #' to store the cache. Default name is `bankrcache`. Change it if you already
+    #' have a table named `bankrcache` in your DB.
+    #' @param algo for `{memoise}` compatibility, the `digest()` algorithm
+    #' @param compress for `{memoise}` compatibility, should the data be compressed?
+    #' @return A cache_postgres object
+    initialize = function(...,
+                          cache_table = "bankrcache",
+                          algo = "sha512",
+                          compress = FALSE) {
+      if (!requireNamespace("odbc")) {
+        stop(
+          paste(
+            "The {odbc} package has to be installed before using `cache_ms_sql`.",
+            "Please install it first, for example with install.packages('odbc').",
+            sep = "\n"
+          )
+        )
+      }
+      if (!requireNamespace("DBI")) {
+        stop(
+          paste(
+            "The {DBI} package has to be installed before using `cache_ms_sql`.",
+            "Please install it first, for example with install.packages('DBI').",
+            sep = "\n"
+          )
+        )
+      }
+      private$interface <- DBI::dbConnect(
+        odbc::odbc(),
+        ...
+      )
+      
+      private$cache_table <- cache_table
+      
+      if (
+        cache_table %in% DBI::dbListTables(private$interface)
+      ) {
+        res <- DBI::dbGetQuery(
+          private$interface,
+          sprintf(
+            "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '%s';",
+            cache_table
+          )
+        )
+        names(res) <- tolower(names(res))
+        attempt::stop_if_not(
+          nrow(res) == 2,
+          msg = "Your cache_table your only have two columns"
+        )
+        attempt::stop_if_not(
+          all(c("cache", "id") %in% res$column_name),
+          msg = "Your cache_db should have a `cache` and an `id` column."
+        )
+        attempt::stop_if_not(
+          all(c("varchar", "varbinary") %in% res$data_type),
+          msg = "Your cache_table data types should be `varchar` and `varbinary`."
+        )
+      } else {
+        DBI::dbCreateTable(
+          private$interface,
+          cache_table,
+          fields = c(
+            id = "varchar(max)",
+            cache = "varbinary(max)"
+          )
+        )
+      }
+      
+      private$algo <- algo
+      private$compress <- compress
+    },
+    #' @description
+    #' Does the cache contains a given key?
+    #' @param key Name of the key.
+    #' @return TRUE/FALSE
+    has_key = function(key) {
+      res <- DBI::dbGetQuery(
+        private$interface,
+        sprintf(
+          "SELECT id FROM %s WHERE id = '%s';",
+          private$cache_table,
+          key
+        )
+      )
+      if (nrow(res) > 1) {
+        stop("Corrupted cache: more than one entry for ", key)
+      }
+      nrow(res) == 1
+    },
+    #' @description
+    #' Get a key from the cache
+    #' @param key Name of the key.
+    #' @return The value stored using the `key`
+    # Inspied by @jrosell https://stackoverflow.com/a/70288183/8236642
+    get = function(key) {
+      if (self$has_key(key)) {
+        tmp <- tempfile(fileext = ".RDS")
+        on.exit({
+          unlink(tmp, TRUE, TRUE)
+        })
+        out <- DBI::dbGetQuery(
+          private$interface,
+          sprintf(
+            "SELECT * FROM %s WHERE id = '%s';",
+            private$cache_table,
+            key
+          )
+        )
+        
+        # Handling the case where the value has been deleted in-between
+        # (should be very, very corner case)
+        res <- tryCatch(
+          {
+            unserialized_out <- unserialize(out$cache[[1]])
+            writeBin(object = unserialized_out, con = tmp)
+            readRDS(tmp)
+          },
+          error = function(e) {
+            return(NULL)
+          }
+        )
+        if (is.null(res)) {
+          return(
+            structure(list(), class = "key_missing")
+          )
+        }
+        return(
+          res
+        )
+      } else {
+        return(
+          structure(list(), class = "key_missing")
+        )
+      }
+    },
+    #' @description
+    #' Set a key in the cache
+    #' @param key Name of the key.
+    #' @param value Value to store
+    #' @return Used for side effect
+    set = function(key, value) {
+      if (!self$has_key(key)) {
+        temp_file <- tempfile(fileext = ".RDS")
+        saveRDS(value, file = temp_file)
+        pdf <- readBin(con = temp_file, what = raw(), n = file.info(temp_file)$size)
+        pdf_serialized <- serialize(pdf, NULL)
+        
+        DBI::dbWriteTable(
+          private$interface,
+          private$cache_table,
+          data.frame(
+            id = key,
+            cache = I(list(pdf_serialized))
+          ),
+          append = TRUE
+        )
+      }
+    },
+    #' @description
+    #' Clear all the cache
+    #' @return Used for side-effect
+    reset = function() {
+      DBI::dbRemoveTable(
+        private$interface,
+        private$cache_table
+      )
+      DBI::dbCreateTable(
+        private$interface,
+        private$cache_table,
+        fields = c(
+          id = "varchar(max)",
+          cache = "varbinary(max)"
+        )
+      )
+    },
+    #' @description
+    #' Remove a key/value pair
+    #' @param key Name of the key.
+    #' @return Used for side-effect
+    remove = function(key) {
+      DBI::dbExecute(
+        private$interface,
+        sprintf(
+          "DELETE FROM %s WHERE id = '%s';",
+          private$cache_table,
+          key
+        )
+      )
+    },
+    #' @description
+    #' List all the keys in the cache
+    #' @return A list of keys
+    keys = function() {
+      DBI::dbGetQuery(
+        private$interface,
+        sprintf(
+          "SELECT id FROM %s",
+          private$cache_table
+        )
+      )$id
+    },
+    #' @description
+    #' Function that runs an hash algo.
+    #' For compatibily with `{memoise}`
+    #' @param ... the value to hash
+    #' @return A function
+    digest = function(...) digest::digest(..., algo = private$algo)
+  ),
+  private = list(
+    interface = list(),
+    cache_table = character(0),
+    algo = character(0),
+    compress = logical(0)
+  )
+)
+```
+
+```{r examples}
+my_median(1:12)
+```
+
+```{r tests}
+test_them_all <- function(cache_obj) {
+  
+    f <- function(x) {
+        sample(1:1000, x)
+    }
+
+    mf <- memoise::memoise(f, cache = cache_obj)
+    
+    expect_equal(
+        mf(5),
+        mf(5)
+    )
+    
+    kys <- cache_obj$keys()
+    
+    expect_true(
+        length(kys) > 0
+    )
+    
+    kys <- kys[1]
+    expect_true(
+        cache_obj$has_key(kys)
+    )
+
+    expect_equal(
+        cache_obj$get(kys)$value,
+        mf(5)
+    )
+    
+    mf(6)
+    
+    kys <- cache_obj$keys()
+    
+    expect_true(
+        length(kys) > 1
+    )
+    
+    old_key <- kys[1]
+    
+    rm <- cache_obj$remove(old_key)
+    
+    if (
+        any(inherits(cache_obj, "cache_postgres"), inherits(cache_obj, "cache_ms_sql"))
+    ) {
+        expect_equal(
+            rm,
+            1
+        )
+    }
+
+    kys <- cache_obj$keys()
+    
+    expect_true(
+        length(kys) > 0
+    )
+    
+    expect_false(
+        old_key %in% kys
+    )
+
+    kys <- kys[1]
+    expect_true(
+        cache_obj$has_key(kys)
+    )
+    
+    expect_false(
+        cache_obj$has_key(old_key)
+    )
+}
+
+test_that("cache_ms_sql works", {
+  skip_on_ci()
+  
+  system('docker run --rm --name mssqlbankunittest -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=MySecret@Passw0rd" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest')
+  
+  Sys.sleep(10)
+  
+  ms_sql_cache <- cache_ms_sql$new(
+    Driver = "SQL Server",
+    Server = "localhost",
+    Database = "master",
+    UID = "SA",
+    PWD = "MySecret@Passw0rd",
+    Port = 1433)
+  
+  test_them_all(
+    cache = ms_sql_cache
+  )
+  
+  system("docker kill mssqlbankunittest")
+})
+```
