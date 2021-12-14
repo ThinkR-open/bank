@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
   eval = FALSE
 )
 
-system("docker stop mongobank redisbank postgresbank")
+system("docker stop mongobank redisbank postgresbank mssqlbank")
 ```
 
 # bank
@@ -44,7 +44,7 @@ See `?shiny::bindCache`
 
 ### Cache flushing
 
-As with any `{cachem}` compatible objects, the cache can be manually flushed using the `$reset()` method -- this will call `drop()` on MongoDb, `FLUSHALL` in Redis, & `DBI::dbRemoveTable()` + `DBI::dbCreateTable()` with Postgres. 
+As with any `{cachem}` compatible objects, the cache can be manually flushed using the `$reset()` method -- this will call `drop()` on MongoDB, `FLUSHALL` in Redis, & `DBI::dbRemoveTable()` + `DBI::dbCreateTable()` with Postgre and Microsoft SQL Server. 
 
 ```{r}
 library(bank)
@@ -75,7 +75,11 @@ MongoDB doesn't come with a LRU mechanism, but you can set data to be ephemeral 
 
 ### Postgre limitation
 
-Postgre `bytea` column can only store up to 1GB elements, so you can't write a cache that's > 1GB. 
+Postgre `bytea` column can only store up to 1GB elements, so you can't write a cache that's > 1GB.
+
+### Microsoft SQL Server limitation
+
+Microsoft SQL Server `varchar(max)` column can only store up to 2GB elements, so you can't write a cache that's > 2GB. 
 
 ## Backends
 
@@ -91,17 +95,19 @@ For now, the following backends are supported:
 
 + [Redis](#redis)
 
-+ [Postgre](#postgres)
++ [Postgre](#postgre)
+
++ [Microsoft SQL Server](#microsoft-sql-server)
 
 ### Mongo
 
-Launching a container with mongo. 
+Launching a container with Mongo. 
 
 ```{bash}
 docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:3.4
 ```
 
-```{r echo = FALSE, eval = TRUE}
+```{r echo = FALSE, eval = TRUE, results = 'hide'}
 system("docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:3.4")
 Sys.sleep(20)
 ```
@@ -137,6 +143,7 @@ Here is a first simple application that shows you the basics :
 
 ```{r}
 library(shiny)
+
 ui <- fluidPage(
   # Creating a slider input that will be used as a cache key
   sliderInput("nrow", "NROW", 1, 32, 32),
@@ -166,7 +173,6 @@ As you can see, the first time you set the slider to a given value, it takes a l
 Then it's almost instantaneous.
 
 Let's try a more complex application:
-
 
 ```{r}
 # We'll put everything in a function so that it can later be reused with other backends
@@ -308,7 +314,7 @@ Launching a container with redis.
 docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5 --requirepass bebopalula
 ```
 
-```{r echo = FALSE, eval = TRUE}
+```{r echo = FALSE, eval = TRUE, results = 'hide'}
 system("docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5 --requirepass bebopalula")
 Sys.sleep(20)
 ```
@@ -366,15 +372,15 @@ For the larger app:
 generate_app(redis_cache)
 ```
 
-### Postgres
+### Postgre
 
-Launching a container with postgres. 
+Launching a container with Postgre. 
 
 ```{bash}
 docker run --rm --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d -p 5433:5432 postgres
 ```
 
-```{r echo = FALSE, eval = TRUE}
+```{r echo = FALSE, eval = TRUE, results = 'hide'}
 system("docker run --rm --name postgresbank -e POSTGRES_PASSWORD=mysecretpassword -d -p 5433:5432 postgres")
 Sys.sleep(20)
 ```
@@ -437,6 +443,78 @@ For the larger app:
 generate_app(postgres_cache)
 ```
 
+### Microsoft SQL Server
+
+Launching a container with Microsoft SQL Server. 
+
+```{bash}
+docker run --rm --name mssqlbank -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=MySecret@Passw0rd" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
+```
+
+```{r echo = FALSE, eval = TRUE, results = 'hide'}
+system('docker run --rm --name mssqlbank -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=MySecret@Passw0rd" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest')
+Sys.sleep(20)
+```
+
+#### With `{memoise}`
+
+```{r eval = TRUE}
+# Create a Microsoft SQL Server cache.
+# The arguments will be passed to DBI::dbConnect(odbc::odbc(), ...)
+ms_sql_cache <- cache_ms_sql$new(
+    Driver = "SQL Server",
+    Server = "localhost",
+    Database = "master",
+    UID = "SA",
+    PWD = "MySecret@Passw0rd",
+    Port = 1433)
+
+f <- function(x) {
+  sample(1:1000, x)
+}
+
+mf <- memoise(f, cache = ms_sql_cache)
+mf(5)
+mf(5)
+```
+
+#### Inside `{shiny}`
+
+Here is a first simple application that shows you the basics :
+
+```{r}
+library(shiny)
+
+ui <- fluidPage(
+  # Creating a slider input that will be used as a cache key
+  sliderInput("nrow", "NROW", 1, 32, 32),
+  # Plotting a piece of mtcars
+  plotOutput("plot")
+)
+
+server <- function(input, output, session) {
+  output$plot <- renderCachedPlot(
+    {
+      # Pretending this takes a long time
+      Sys.sleep(2)
+      plot(mtcars[1:input$nrow, ])
+    },
+    cacheKeyExpr = list(
+      # Defining the cache key
+      input$nrow
+    ),
+    # Using our Microsoft SQL Server cache cache
+    cache = ms_sql_cache
+  )
+}
+shinyApp(ui, server)
+```
+
+For the larger app: 
+
+```{r}
+generate_app(ms_sql_cache)
+```
 
 ## Chosing a cache method
 
@@ -475,12 +553,21 @@ postgres_cache <- cache_postgres$new(
   password = "mysecretpassword"
 )
 
+ms_sql_cache <- cache_ms_sql$new(
+    Driver = "SQL Server",
+    Server = "localhost",
+    Database = "master",
+    UID = "SA",
+    PWD = "MySecret@Passw0rd",
+    Port = 1433)
+
 bench::mark(
   mem_cache = mem_cache$set("iris", big_iris),
   disk_cache = disk_cache$set("iris", big_iris),
   mongo_cache = mongo_cache$set("iris", big_iris),
   redis_cache = redis_cache$set("iris", big_iris),
   postgres_cache = postgres_cache$set("iris", big_iris),
+  ms_sql_cache = ms_sql_cache$set("iris", big_iris),
   check = FALSE,
   iterations = 100
 )
@@ -491,16 +578,17 @@ bench::mark(
   mongo_cache = mongo_cache$get("iris"),
   redis_cache = redis_cache$get("iris"),
   postgres_cache = postgres_cache$get("iris"),
+  ms_sql_cache = ms_sql_cache$get("iris"),
   iterations = 100
 )
 ```
 
 ```{bash}
-docker stop mongobank redisbank postgresbank
+docker stop mongobank redisbank postgresbank mssqlbank
 ```
 
-```{r echo = FALSE, eval = TRUE}
-system("docker stop mongobank redisbank postgresbank")
+```{r echo = FALSE, eval = TRUE, results = 'hide'}
+system("docker stop mongobank redisbank postgresbank mssqlbank")
 ```
 
 ## You want another backend?

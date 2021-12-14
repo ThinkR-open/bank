@@ -42,8 +42,8 @@ See `?shiny::bindCache`
 
 As with any `{cachem}` compatible objects, the cache can be manually
 flushed using the `$reset()` method – this will call `drop()` on
-MongoDb, `FLUSHALL` in Redis, & `DBI::dbRemoveTable()` +
-`DBI::dbCreateTable()` with Postgres.
+MongoDB, `FLUSHALL` in Redis, & `DBI::dbRemoveTable()` +
+`DBI::dbCreateTable()` with Postgre and Microsoft SQL Server.
 
 ``` r
 library(bank)
@@ -79,7 +79,12 @@ cached objects.
 ### Postgre limitation
 
 Postgre `bytea` column can only store up to 1GB elements, so you can’t
-write a cache that’s &gt; 1GB.
+write a cache that’s \> 1GB.
+
+### Microsoft SQL Server limitation
+
+Microsoft SQL Server `varchar(max)` column can only store up to 2GB
+elements, so you can’t write a cache that’s \> 2GB.
 
 ## Backends
 
@@ -95,11 +100,13 @@ For now, the following backends are supported:
 
 -   [Redis](#redis)
 
--   [Postgre](#postgres)
+-   [Postgre](#postgre)
+
+-   [Microsoft SQL Server](#microsoft-sql-server)
 
 ### Mongo
 
-Launching a container with mongo.
+Launching a container with Mongo.
 
 ``` bash
 docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:3.4
@@ -127,9 +134,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = mongo_cache)
 mf(5)
-#> [1] 405  27 327 821 203
+#> [1] 908 986 914 587 267
 mf(5)
-#> [1] 405  27 327 821 203
+#> [1] 908 986 914 587 267
 ```
 
 #### Inside `{shiny}`
@@ -138,6 +145,7 @@ Here is a first simple application that shows you the basics :
 
 ``` r
 library(shiny)
+
 ui <- fluidPage(
   # Creating a slider input that will be used as a cache key
   sliderInput("nrow", "NROW", 1, 32, 32),
@@ -293,25 +301,25 @@ get_metadata <- function(mongo) {
 }
 Sys.sleep(10)
 mf(5)
-#> [1] 405  27 327 821 203
+#> [1] 908 986 914 587 267
 get_metadata(mongo)
 #> [[1]]
 #> [[1]]$key
 #> [1] "116acf5d3c7188709a0374305ba3a33747ef5ce323f3e170862551ed523d7a425658d2fb50d11a557250935326669e0a37efb90205d2ba114795359bb55234ca"
 #> 
 #> [[1]]$lastAccessed
-#> [1] "2021-12-09 15:45:12"
+#> [1] "2021-12-14 09:56:13"
 
 Sys.sleep(10)
 mf(5)
-#> [1] 405  27 327 821 203
+#> [1] 908 986 914 587 267
 get_metadata(mongo)
 #> [[1]]
 #> [[1]]$key
 #> [1] "116acf5d3c7188709a0374305ba3a33747ef5ce323f3e170862551ed523d7a425658d2fb50d11a557250935326669e0a37efb90205d2ba114795359bb55234ca"
 #> 
 #> [[1]]$lastAccessed
-#> [1] "2021-12-09 15:45:22"
+#> [1] "2021-12-14 09:56:23"
 ```
 
 ### Redis
@@ -336,9 +344,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = redis_cache)
 mf(5)
-#> [1] 697 688 427 706 328
+#> [1] 599 886 857 224 998
 mf(5)
-#> [1] 697 688 427 706 328
+#> [1] 599 886 857 224 998
 ```
 
 #### Inside `{shiny}`
@@ -377,9 +385,9 @@ For the larger app:
 generate_app(redis_cache)
 ```
 
-### Postgres
+### Postgre
 
-Launching a container with postgres.
+Launching a container with Postgre.
 
 ``` bash
 docker run --rm --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d -p 5433:5432 postgres
@@ -405,9 +413,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = postgres_cache)
 mf(5)
-#> [1] 423 405 460 138 492
+#> [1] 219  74 343 767 336
 mf(5)
-#> [1] 423 405 460 138 492
+#> [1] 219  74 343 767 336
 ```
 
 #### Inside `{shiny}`
@@ -444,6 +452,77 @@ For the larger app:
 
 ``` r
 generate_app(postgres_cache)
+```
+
+### Microsoft SQL Server
+
+Launching a container with Microsoft SQL Server.
+
+``` bash
+docker run --rm --name mssqlbank -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=MySecret@Passw0rd" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
+```
+
+#### With `{memoise}`
+
+``` r
+# Create a Microsoft SQL Server cache.
+# The arguments will be passed to DBI::dbConnect(odbc::odbc(), ...)
+ms_sql_cache <- cache_ms_sql$new(
+    Driver = "SQL Server",
+    Server = "localhost",
+    Database = "master",
+    UID = "SA",
+    PWD = "MySecret@Passw0rd",
+    Port = 1433)
+#> Loading required namespace: odbc
+
+f <- function(x) {
+  sample(1:1000, x)
+}
+
+mf <- memoise(f, cache = ms_sql_cache)
+mf(5)
+#> [1]  60 815 774  81 536
+mf(5)
+#> [1]  60 815 774  81 536
+```
+
+#### Inside `{shiny}`
+
+Here is a first simple application that shows you the basics :
+
+``` r
+library(shiny)
+
+ui <- fluidPage(
+  # Creating a slider input that will be used as a cache key
+  sliderInput("nrow", "NROW", 1, 32, 32),
+  # Plotting a piece of mtcars
+  plotOutput("plot")
+)
+
+server <- function(input, output, session) {
+  output$plot <- renderCachedPlot(
+    {
+      # Pretending this takes a long time
+      Sys.sleep(2)
+      plot(mtcars[1:input$nrow, ])
+    },
+    cacheKeyExpr = list(
+      # Defining the cache key
+      input$nrow
+    ),
+    # Using our Microsoft SQL Server cache cache
+    cache = ms_sql_cache
+  )
+}
+shinyApp(ui, server)
+```
+
+For the larger app:
+
+``` r
+generate_app(ms_sql_cache)
 ```
 
 ## Chosing a cache method
@@ -488,23 +567,33 @@ postgres_cache <- cache_postgres$new(
   password = "mysecretpassword"
 )
 
+ms_sql_cache <- cache_ms_sql$new(
+    Driver = "SQL Server",
+    Server = "localhost",
+    Database = "master",
+    UID = "SA",
+    PWD = "MySecret@Passw0rd",
+    Port = 1433)
+
 bench::mark(
   mem_cache = mem_cache$set("iris", big_iris),
   disk_cache = disk_cache$set("iris", big_iris),
   mongo_cache = mongo_cache$set("iris", big_iris),
   redis_cache = redis_cache$set("iris", big_iris),
   postgres_cache = postgres_cache$set("iris", big_iris),
+  ms_sql_cache = ms_sql_cache$set("iris", big_iris),
   check = FALSE,
   iterations = 100
 )
-#> # A tibble: 5 × 6
+#> # A tibble: 6 x 6
 #>   expression          min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>     <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache       22.94µs  39.86µs  15037.      2.23KB   0     
-#> 2 disk_cache       6.24ms   8.06ms    115.     18.44KB   0     
-#> 3 mongo_cache     47.74ms  88.24ms      8.40    2.52MB   0.442 
-#> 4 redis_cache     35.99ms 100.24ms      6.69  536.58KB   0.0675
-#> 5 postgres_cache   6.11ms  13.17ms     44.3   535.65KB   0
+#> 1 mem_cache          23us  27.35us   36054.     2.23KB     0   
+#> 2 disk_cache       6.05ms   7.27ms     123.    18.43KB     0   
+#> 3 mongo_cache     18.29ms  22.97ms      42.0    2.52MB     2.21
+#> 4 redis_cache      7.44ms   8.76ms     104.   536.58KB     2.12
+#> 5 postgres_cache   2.21ms   2.53ms     355.   627.87KB     0   
+#> 6 ms_sql_cache     2.01ms   2.46ms     382.    383.8KB     0
 
 bench::mark(
   mem_cache = mem_cache$get("iris"),
@@ -512,20 +601,22 @@ bench::mark(
   mongo_cache = mongo_cache$get("iris"),
   redis_cache = redis_cache$get("iris"),
   postgres_cache = postgres_cache$get("iris"),
+  ms_sql_cache = ms_sql_cache$get("iris"),
   iterations = 100
 )
-#> # A tibble: 5 × 6
+#> # A tibble: 6 x 6
 #>   expression          min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>     <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache       13.55µs  25.16µs  26185.          0B    0    
-#> 2 disk_cache       2.27ms   4.21ms    183.    535.09KB    1.85 
-#> 3 mongo_cache     52.98ms  86.59ms      9.35    2.06MB    0.492
-#> 4 redis_cache     26.77ms  65.73ms     11.3     1.03MB    0.230
-#> 5 postgres_cache  19.47ms  31.49ms     25.1   566.62KB    0.254
+#> 1 mem_cache        13.9us   14.5us   64880.         0B    0    
+#> 2 disk_cache       1.76ms   2.02ms     430.   535.09KB    4.34 
+#> 3 mongo_cache     16.63ms  19.86ms      47.9    2.06MB    3.06 
+#> 4 redis_cache      7.24ms    9.2ms     105.     1.03MB    3.24 
+#> 5 postgres_cache   8.77ms  10.36ms      87.9  566.62KB    0.888
+#> 6 ms_sql_cache     8.02ms   9.13ms     104.   569.95KB    2.13
 ```
 
 ``` bash
-docker stop mongobank redisbank postgresbank
+docker stop mongobank redisbank postgresbank mssqlbank
 ```
 
 ## You want another backend?
