@@ -23,7 +23,7 @@ cache_postgres <- R6::R6Class(
       private$check_dependencies("cache_postgres", "RPostgres")
 
       private$interface <- private$connect(RPostgres::Postgres(), ...)
-
+      
       private$cache_table <- cache_table
 
       private$check_table()
