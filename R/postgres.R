@@ -32,6 +32,9 @@ cache_postgres <- R6::R6Class(
 
       private$compress <- compress
     },
+    #' @description
+    #' Closes the connection
+    #' @return TRUE, invisibly.
     finalize = function() {
       DBI::dbDisconnect(private$interface)
     },

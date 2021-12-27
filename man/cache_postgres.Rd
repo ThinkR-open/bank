@@ -63,10 +63,14 @@ A cache_postgres object
 \if{html}{\out{<a id="method-finalize"></a>}}
 \if{latex}{\out{\hypertarget{method-finalize}{}}}
 \subsection{Method \code{finalize()}}{
+Closes the connection
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{cache_postgres$finalize()}\if{html}{\out{</div>}}
 }
 
+\subsection{Returns}{
+TRUE, invisibly.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-has_key"></a>}}
