@@ -1,13 +1,13 @@
-#' A Caching object for postgres
+#' A Caching object for Postgres
 #'
-#' Create a cache backend with postgres
+#' Create a cache backend with Postgres
 #'
 #' @export
 cache_postgres <- R6::R6Class(
   "cache_postgres",
   public = list(
     #' @description
-    #' Start a new postgres cache
+    #' Start a new Postgres cache
     #' @param ... Parameters passes do DBI::dbConnect(RPostgres::Postgres(), ...)
     #' @param cache_table On `initialize()`, the cache object will create a table
     #' to store the cache. Default name is `bankrcache`. Change it if you already
@@ -19,67 +19,24 @@ cache_postgres <- R6::R6Class(
                           cache_table = "bankrcache",
                           algo = "sha512",
                           compress = FALSE) {
-      if (!requireNamespace("RPostgres")) {
-        stop(
-          paste(
-            "The {RPostgres} package has to be installed before using `cache_postgres`.",
-            "Please install it first, for example with install.packages('RPostgres').",
-            sep = "\n"
-          )
-        )
-      }
-      if (!requireNamespace("DBI")) {
-        stop(
-          paste(
-            "The {DBI} package has to be installed before using `cache_postgres`.",
-            "Please install it first, for example with install.packages('DBI').",
-            sep = "\n"
-          )
-        )
-      }
-      private$interface <- DBI::dbConnect(
-        RPostgres::Postgres(),
-        ...
-      )
 
+      private$check_dependencies("cache_postgres", "RPostgres")
+
+      private$interface <- private$connect(RPostgres::Postgres(), ...)
+      
       private$cache_table <- cache_table
 
-      if (
-        cache_table %in% DBI::dbListTables(private$interface)
-      ) {
-        res <- DBI::dbGetQuery(
-          private$interface,
-          sprintf(
-            "SELECT COLUMN_NAME ,DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '%s';",
-            cache_table
-          )
-        )
-        names(res) <- tolower(names(res))
-        attempt::stop_if_not(
-          nrow(res) == 2,
-          msg = "Your cache_table your only have two column"
-        )
-        attempt::stop_if_not(
-          all(c("cache", "id") %in% res$column_name),
-          msg = "Your cache_db should have a `cache` and an `id` column."
-        )
-        attempt::stop_if_not(
-          all(c("character varying", "bytea") %in% res$data_type),
-          msg = "Your cache_table data types should be `bytea` and `character varying`."
-        )
-      } else {
-        DBI::dbCreateTable(
-          private$interface,
-          cache_table,
-          fields = c(
-            id = "VARCHAR",
-            cache = "BYTEA"
-          )
-        )
-      }
+      private$check_table()
 
       private$algo <- algo
+
       private$compress <- compress
+    },
+    #' @description
+    #' Closes the connection
+    #' @return TRUE, invisibly.
+    finalize = function() {
+      DBI::dbDisconnect(private$interface)
     },
     #' @description
     #' Does the cache contains a given key?
@@ -176,14 +133,7 @@ cache_postgres <- R6::R6Class(
         private$interface,
         private$cache_table
       )
-      DBI::dbCreateTable(
-        private$interface,
-        private$cache_table,
-        fields = c(
-          id = "VARCHAR",
-          cache = "BYTEA"
-        )
-      )
+      private$create_table()
     },
     #' @description
     #' Remove a key/value pair
@@ -219,7 +169,81 @@ cache_postgres <- R6::R6Class(
     digest = function(...) digest::digest(..., algo = private$algo)
   ),
   private = list(
-    interface = list(),
+    check_dependencies = function(class_name = character(),
+                                  packages = character()) {
+
+      needed_packages <- c("DBI", packages)
+
+      stopper <- function(package) {
+
+        if( !requireNamespace(package) ) {
+          stop(
+            paste0(
+              "The {", package, "} package has to be installed before using `",
+              class_name, "`. Please install it first, for example with
+              install.packages('", package, "')."
+            ),
+            call. = FALSE
+          )
+        }
+
+      }
+
+      lapply(needed_packages, FUN = stopper)
+
+    },
+    connect = function(...) {
+      DBI::dbConnect(...)
+    },
+    sql_column_data = list(
+      column_id = list(type = "VARCHAR", type_description = "character varying"),
+      column_cache = list(type = "BYTEA", type_description = "bytea")
+    ),
+    check_table = function() {
+      if (
+        private$cache_table %in% DBI::dbListTables(private$interface)
+      ) {
+        res <- DBI::dbGetQuery(
+          private$interface,
+          sprintf(
+            "SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '%s';",
+            private$cache_table
+          )
+        )
+        names(res) <- tolower(names(res))
+        attempt::stop_if_not(
+          nrow(res) == 2,
+          msg = "Your cache_table should have only two columns"
+        )
+        attempt::stop_if_not(
+          all(c("cache", "id") %in% res$column_name),
+          msg = "Your cache_db should have a `cache` and an `id` column."
+        )
+        attempt::stop_if_not(
+          all(c(private$sql_column_data$column_id$type_description,
+                private$sql_column_data$column_cache$type_description) %in%
+                res$data_type),
+          msg = paste0("Your cache_table data types should be `",
+                       private$sql_column_data$column_id$type_description,
+                       "` and `",
+                       private$sql_column_data$column_cache$type_description,
+                       ".")
+        )
+      } else {
+        private$create_table()
+      }
+    },
+    create_table = function() {
+      DBI::dbCreateTable(
+        private$interface,
+        private$cache_table,
+        fields = c(
+          id = private$sql_column_data$column_id$type,
+          cache = private$sql_column_data$column_cache$type
+        )
+      )
+    },
+    interface = list(0),
     cache_table = character(0),
     algo = character(0),
     compress = logical(0)

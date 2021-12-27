@@ -2,19 +2,20 @@
 % Please edit documentation in R/postgres.R
 \name{cache_postgres}
 \alias{cache_postgres}
-\title{A Caching object for postgres}
+\title{A Caching object for Postgres}
 \description{
-A Caching object for postgres
+A Caching object for Postgres
 
-A Caching object for postgres
+A Caching object for Postgres
 }
 \details{
-Create a cache backend with redis
+Create a cache backend with Postgres
 }
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-new}{\code{cache_postgres$new()}}
+\item \href{#method-finalize}{\code{cache_postgres$finalize()}}
 \item \href{#method-has_key}{\code{cache_postgres$has_key()}}
 \item \href{#method-get}{\code{cache_postgres$get()}}
 \item \href{#method-set}{\code{cache_postgres$set()}}
@@ -29,7 +30,7 @@ Create a cache backend with redis
 \if{html}{\out{<a id="method-new"></a>}}
 \if{latex}{\out{\hypertarget{method-new}{}}}
 \subsection{Method \code{new()}}{
-Start a new redis cache
+Start a new Postgres cache
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{cache_postgres$new(
   ...,
@@ -56,6 +57,19 @@ have a table named \code{bankrcache} in your DB.}
 }
 \subsection{Returns}{
 A cache_postgres object
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-finalize"></a>}}
+\if{latex}{\out{\hypertarget{method-finalize}{}}}
+\subsection{Method \code{finalize()}}{
+Closes the connection
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{cache_postgres$finalize()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+TRUE, invisibly.
 }
 }
 \if{html}{\out{<hr>}}

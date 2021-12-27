@@ -3,7 +3,7 @@ test_them_all <- function(cache_obj) {
         sample(1:1000, x)
     }
 
-    mf <- memoise(f, cache = cache_obj)
+    mf <- memoise::memoise(f, cache = cache_obj)
     expect_equal(
         mf(5),
         mf(5)
