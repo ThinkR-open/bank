@@ -3,6 +3,9 @@
 #' Create a cache backend with postgres
 #'
 #' @export
+#' @importFrom R6 R6Class
+#' @importFrom attempt stop_if_not
+#' @importFrom digest digest
 cache_postgres <- R6::R6Class(
   "cache_postgres",
   public = list(
@@ -55,15 +58,15 @@ cache_postgres <- R6::R6Class(
           )
         )
         names(res) <- tolower(names(res))
-        attempt::stop_if_not(
+        stop_if_not(
           nrow(res) == 2,
           msg = "Your cache_table your only have two column"
         )
-        attempt::stop_if_not(
+        stop_if_not(
           all(c("cache", "id") %in% res$column_name),
           msg = "Your cache_db should have a `cache` and an `id` column."
         )
-        attempt::stop_if_not(
+        stop_if_not(
           all(c("character varying", "bytea") %in% res$data_type),
           msg = "Your cache_table data types should be `bytea` and `character varying`."
         )

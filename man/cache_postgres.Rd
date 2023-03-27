@@ -9,27 +9,27 @@ A Caching object for postgres
 A Caching object for postgres
 }
 \details{
-Create a cache backend with redis
+Create a cache backend with postgres
 }
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
-\item \href{#method-new}{\code{cache_postgres$new()}}
-\item \href{#method-has_key}{\code{cache_postgres$has_key()}}
-\item \href{#method-get}{\code{cache_postgres$get()}}
-\item \href{#method-set}{\code{cache_postgres$set()}}
-\item \href{#method-reset}{\code{cache_postgres$reset()}}
-\item \href{#method-remove}{\code{cache_postgres$remove()}}
-\item \href{#method-keys}{\code{cache_postgres$keys()}}
-\item \href{#method-digest}{\code{cache_postgres$digest()}}
-\item \href{#method-clone}{\code{cache_postgres$clone()}}
+\item \href{#method-cache_postgres-new}{\code{cache_postgres$new()}}
+\item \href{#method-cache_postgres-has_key}{\code{cache_postgres$has_key()}}
+\item \href{#method-cache_postgres-get}{\code{cache_postgres$get()}}
+\item \href{#method-cache_postgres-set}{\code{cache_postgres$set()}}
+\item \href{#method-cache_postgres-reset}{\code{cache_postgres$reset()}}
+\item \href{#method-cache_postgres-remove}{\code{cache_postgres$remove()}}
+\item \href{#method-cache_postgres-keys}{\code{cache_postgres$keys()}}
+\item \href{#method-cache_postgres-digest}{\code{cache_postgres$digest()}}
+\item \href{#method-cache_postgres-clone}{\code{cache_postgres$clone()}}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-new"></a>}}
-\if{latex}{\out{\hypertarget{method-new}{}}}
+\if{html}{\out{<a id="method-cache_postgres-new"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_postgres-new}{}}}
 \subsection{Method \code{new()}}{
-Start a new redis cache
+Start a new postgres cache
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{cache_postgres$new(
   ...,
@@ -59,8 +59,8 @@ A cache_postgres object
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-has_key"></a>}}
-\if{latex}{\out{\hypertarget{method-has_key}{}}}
+\if{html}{\out{<a id="method-cache_postgres-has_key"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_postgres-has_key}{}}}
 \subsection{Method \code{has_key()}}{
 Does the cache contains a given key?
 \subsection{Usage}{
@@ -79,8 +79,8 @@ TRUE/FALSE
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-get"></a>}}
-\if{latex}{\out{\hypertarget{method-get}{}}}
+\if{html}{\out{<a id="method-cache_postgres-get"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_postgres-get}{}}}
 \subsection{Method \code{get()}}{
 Get a key from the cache
 \subsection{Usage}{
@@ -99,8 +99,8 @@ The value stored using the \code{key}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-set"></a>}}
-\if{latex}{\out{\hypertarget{method-set}{}}}
+\if{html}{\out{<a id="method-cache_postgres-set"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_postgres-set}{}}}
 \subsection{Method \code{set()}}{
 Set a key in the cache
 \subsection{Usage}{
@@ -121,8 +121,8 @@ Used for side effect
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-reset"></a>}}
-\if{latex}{\out{\hypertarget{method-reset}{}}}
+\if{html}{\out{<a id="method-cache_postgres-reset"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_postgres-reset}{}}}
 \subsection{Method \code{reset()}}{
 Clear all the cache
 \subsection{Usage}{
@@ -134,8 +134,8 @@ Used for side-effect
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-remove"></a>}}
-\if{latex}{\out{\hypertarget{method-remove}{}}}
+\if{html}{\out{<a id="method-cache_postgres-remove"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_postgres-remove}{}}}
 \subsection{Method \code{remove()}}{
 Remove a key/value pair
 \subsection{Usage}{
@@ -154,8 +154,8 @@ Used for side-effect
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-keys"></a>}}
-\if{latex}{\out{\hypertarget{method-keys}{}}}
+\if{html}{\out{<a id="method-cache_postgres-keys"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_postgres-keys}{}}}
 \subsection{Method \code{keys()}}{
 List all the keys in the cache
 \subsection{Usage}{
@@ -167,8 +167,8 @@ A list of keys
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-digest"></a>}}
-\if{latex}{\out{\hypertarget{method-digest}{}}}
+\if{html}{\out{<a id="method-cache_postgres-digest"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_postgres-digest}{}}}
 \subsection{Method \code{digest()}}{
 Function that runs an hash algo.
 For compatibily with \code{{memoise}}
@@ -188,8 +188,8 @@ A function
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-clone"></a>}}
-\if{latex}{\out{\hypertarget{method-clone}{}}}
+\if{html}{\out{<a id="method-cache_postgres-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_postgres-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

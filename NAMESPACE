@@ -3,3 +3,6 @@
 export(cache_mongo)
 export(cache_postgres)
 export(cache_redis)
+importFrom(R6,R6Class)
+importFrom(attempt,stop_if_not)
+importFrom(digest,digest)

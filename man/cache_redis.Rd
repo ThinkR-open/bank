@@ -14,20 +14,20 @@ Create a cache backend with redis
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
-\item \href{#method-new}{\code{cache_redis$new()}}
-\item \href{#method-get}{\code{cache_redis$get()}}
-\item \href{#method-set}{\code{cache_redis$set()}}
-\item \href{#method-has_key}{\code{cache_redis$has_key()}}
-\item \href{#method-reset}{\code{cache_redis$reset()}}
-\item \href{#method-remove}{\code{cache_redis$remove()}}
-\item \href{#method-keys}{\code{cache_redis$keys()}}
-\item \href{#method-digest}{\code{cache_redis$digest()}}
-\item \href{#method-clone}{\code{cache_redis$clone()}}
+\item \href{#method-cache_redis-new}{\code{cache_redis$new()}}
+\item \href{#method-cache_redis-get}{\code{cache_redis$get()}}
+\item \href{#method-cache_redis-set}{\code{cache_redis$set()}}
+\item \href{#method-cache_redis-has_key}{\code{cache_redis$has_key()}}
+\item \href{#method-cache_redis-reset}{\code{cache_redis$reset()}}
+\item \href{#method-cache_redis-remove}{\code{cache_redis$remove()}}
+\item \href{#method-cache_redis-keys}{\code{cache_redis$keys()}}
+\item \href{#method-cache_redis-digest}{\code{cache_redis$digest()}}
+\item \href{#method-cache_redis-clone}{\code{cache_redis$clone()}}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-new"></a>}}
-\if{latex}{\out{\hypertarget{method-new}{}}}
+\if{html}{\out{<a id="method-cache_redis-new"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_redis-new}{}}}
 \subsection{Method \code{new()}}{
 Start a new redis cache
 \subsection{Usage}{
@@ -62,8 +62,8 @@ A cache_redis object
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-get"></a>}}
-\if{latex}{\out{\hypertarget{method-get}{}}}
+\if{html}{\out{<a id="method-cache_redis-get"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_redis-get}{}}}
 \subsection{Method \code{get()}}{
 Get a key from the cache
 \subsection{Usage}{
@@ -82,8 +82,8 @@ The value stored using the \code{key}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-set"></a>}}
-\if{latex}{\out{\hypertarget{method-set}{}}}
+\if{html}{\out{<a id="method-cache_redis-set"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_redis-set}{}}}
 \subsection{Method \code{set()}}{
 Set a key in the cache
 \subsection{Usage}{
@@ -104,8 +104,8 @@ Used for side effect
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-has_key"></a>}}
-\if{latex}{\out{\hypertarget{method-has_key}{}}}
+\if{html}{\out{<a id="method-cache_redis-has_key"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_redis-has_key}{}}}
 \subsection{Method \code{has_key()}}{
 Does the cache contains a given key?
 \subsection{Usage}{
@@ -124,8 +124,8 @@ TRUE/FALSE
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-reset"></a>}}
-\if{latex}{\out{\hypertarget{method-reset}{}}}
+\if{html}{\out{<a id="method-cache_redis-reset"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_redis-reset}{}}}
 \subsection{Method \code{reset()}}{
 Clear all the cache
 \subsection{Usage}{
@@ -137,8 +137,8 @@ Used for side-effect
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-remove"></a>}}
-\if{latex}{\out{\hypertarget{method-remove}{}}}
+\if{html}{\out{<a id="method-cache_redis-remove"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_redis-remove}{}}}
 \subsection{Method \code{remove()}}{
 Remove a key/value pair
 \subsection{Usage}{
@@ -157,8 +157,8 @@ Used for side-effect
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-keys"></a>}}
-\if{latex}{\out{\hypertarget{method-keys}{}}}
+\if{html}{\out{<a id="method-cache_redis-keys"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_redis-keys}{}}}
 \subsection{Method \code{keys()}}{
 List all the keys in the cache
 \subsection{Usage}{
@@ -170,8 +170,8 @@ A list of keys
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-digest"></a>}}
-\if{latex}{\out{\hypertarget{method-digest}{}}}
+\if{html}{\out{<a id="method-cache_redis-digest"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_redis-digest}{}}}
 \subsection{Method \code{digest()}}{
 Function that runs an hash algo.
 For compatibily with \code{{memoise}}
@@ -191,8 +191,8 @@ A function
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-clone"></a>}}
-\if{latex}{\out{\hypertarget{method-clone}{}}}
+\if{html}{\out{<a id="method-cache_redis-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-cache_redis-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

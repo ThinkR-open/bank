@@ -1,25 +1,25 @@
 Package: bank
 Title: Extra Cache
 Version: 0.0.0.9002
-Authors@R: 
-    person(given = "Colin",
-           family = "Fay",
-           role = c("aut", "cre"),
-           email = "contact@colinfay.me",
+Authors@R:
+    person("Colin", "Fay", , "contact@colinfay.me", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7343-1846"))
 Description: More cache backends.
 License: MIT + file LICENSE
+Imports:
+    attempt,
+    digest,
+    R6 (>= 2.5.0),
+Suggests:
+    memoise,
+    mongolite (>= 2.2.0),
+    DBI,
+    testthat (>= 3.0.0),
+    redux (>= 1.1.0),
+    RPostgres,
+    withr
+Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.2
-Imports: 
-    attempt,
-    R6 (>= 2.5.0)
-Suggests: 
-    mongolite (>= 2.2.0),
-    redux (>= 1.1.0),
-    DBI,
-    RPostgres,
-    testthat (>= 3.0.0)
-Config/testthat/edition: 3
+RoxygenNote: 7.2.3
