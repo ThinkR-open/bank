@@ -1,6 +1,6 @@
 test_that("cache_redis works", {
   skip_on_ci()
-  system("docker run --rm --name mongobankunittest -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:3.4")
+  system("docker run --rm --name mongobankunittest -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:4")
   Sys.sleep(10)
 
   mongo_cache <- cache_mongo$new(
@@ -13,5 +13,5 @@ test_that("cache_redis works", {
     cache = mongo_cache
   )
 
-  system("docker kill mongobankunittest")
+
 })

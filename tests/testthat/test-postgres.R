@@ -15,5 +15,4 @@ test_that("cache_postgres works", {
     cache = postgres_cache
   )
 
-  system("docker kill postgresbankunittest")
 })

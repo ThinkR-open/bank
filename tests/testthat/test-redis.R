@@ -9,5 +9,5 @@ test_that("cache_redis works", {
     cache = redis_cache
   )
 
-  system("docker kill redisbankunittest")
+
 })
