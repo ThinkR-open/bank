@@ -5,7 +5,9 @@
 
 <!-- badges: start -->
 
-[![R-CMD-check](https://github.com/ThinkR-open/bank/workflows/R-CMD-check/badge.svg)](https://github.com/ThinkR-open/bank/actions)
+[![R-CMD-check](https://github.com/ThinkR-open/bank/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ThinkR-open/bank/actions/workflows/R-CMD-check.yaml)
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
 The goal of `{bank}` is to provide alternative backends for caching with
@@ -16,6 +18,36 @@ The goal of `{bank}` is to provide alternative backends for caching with
 ``` r
 # install.packages("remotes")
 remotes::install_github("thinkr-open/bank")
+```
+
+## About
+
+You’re reading the doc about version : 0.0.0.9002
+
+This README has been compiled on the
+
+``` r
+Sys.time()
+#> [1] "2023-03-27 14:58:39 CEST"
+```
+
+Here are the test & coverage results :
+
+``` r
+devtools::check(quiet = TRUE)
+#> ℹ Loading bank
+#> ── R CMD check results ──────────────────────────────────── bank 0.0.0.9002 ────
+#> Duration: 40.3s
+#> 
+#> 0 errors ✔ | 0 warnings ✔ | 0 notes ✔
+```
+
+``` r
+covr::package_coverage()
+#> bank Coverage: 68.00%
+#> R/postgres.R: 60.87%
+#> R/redis.R: 66.67%
+#> R/mongo.R: 81.01%
 ```
 
 ## Some things to know before starting
@@ -79,30 +111,30 @@ cached objects.
 ### Postgre limitation
 
 Postgre `bytea` column can only store up to 1GB elements, so you can’t
-write a cache that’s &gt; 1GB.
+write a cache that’s \> 1GB.
 
 ## Backends
 
 Note that if you want to use `{bank}` in a `{shiny}` app:
 
--   `renderCachedPlot()` require `{shiny}` version 1.5.0 or higher
+- `renderCachedPlot()` require `{shiny}` version 1.5.0 or higher
 
--   `bindCache()` require `{shiny}` version 1.6.0 or higher
+- `bindCache()` require `{shiny}` version 1.6.0 or higher
 
 For now, the following backends are supported:
 
--   [MongoDB](#mongo)
+- [MongoDB](#mongo)
 
--   [Redis](#redis)
+- [Redis](#redis)
 
--   [Postgre](#postgres)
+- [Postgre](#postgres)
 
 ### Mongo
 
 Launching a container with mongo.
 
 ``` bash
-docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:3.4
+docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:4
 ```
 
 #### With `{memoise}`
@@ -127,9 +159,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = mongo_cache)
 mf(5)
-#> [1] 405  27 327 821 203
+#> [1]  31 609 671 766 219
 mf(5)
-#> [1] 405  27 327 821 203
+#> [1]  31 609 671 766 219
 ```
 
 #### Inside `{shiny}`
@@ -293,25 +325,25 @@ get_metadata <- function(mongo) {
 }
 Sys.sleep(10)
 mf(5)
-#> [1] 405  27 327 821 203
+#> [1]  31 609 671 766 219
 get_metadata(mongo)
 #> [[1]]
 #> [[1]]$key
 #> [1] "116acf5d3c7188709a0374305ba3a33747ef5ce323f3e170862551ed523d7a425658d2fb50d11a557250935326669e0a37efb90205d2ba114795359bb55234ca"
 #> 
 #> [[1]]$lastAccessed
-#> [1] "2021-12-09 15:45:12"
+#> [1] "2023-03-27 15:00:26"
 
 Sys.sleep(10)
 mf(5)
-#> [1] 405  27 327 821 203
+#> [1]  31 609 671 766 219
 get_metadata(mongo)
 #> [[1]]
 #> [[1]]$key
 #> [1] "116acf5d3c7188709a0374305ba3a33747ef5ce323f3e170862551ed523d7a425658d2fb50d11a557250935326669e0a37efb90205d2ba114795359bb55234ca"
 #> 
 #> [[1]]$lastAccessed
-#> [1] "2021-12-09 15:45:22"
+#> [1] "2023-03-27 15:00:36"
 ```
 
 ### Redis
@@ -336,9 +368,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = redis_cache)
 mf(5)
-#> [1] 697 688 427 706 328
+#> [1] 680 901 873 651 605
 mf(5)
-#> [1] 697 688 427 706 328
+#> [1] 680 901 873 651 605
 ```
 
 #### Inside `{shiny}`
@@ -405,9 +437,9 @@ f <- function(x) {
 
 mf <- memoise(f, cache = postgres_cache)
 mf(5)
-#> [1] 423 405 460 138 492
+#> [1] 758 764 404 689 557
 mf(5)
-#> [1] 423 405 460 138 492
+#> [1] 758 764 404 689 557
 ```
 
 #### Inside `{shiny}`
@@ -460,11 +492,21 @@ without the need to be on the same machine.
 library(magrittr)
 library(bank)
 big_iris <- purrr::rerun(100, iris) %>% data.table::rbindlist()
+#> Warning: `rerun()` was deprecated in purrr 1.0.0.
+#> ℹ Please use `map()` instead.
+#>   # Previously
+#>   rerun(100, iris)
+#> 
+#>   # Now
+#>   map(1:100, ~iris)
+#> This warning is displayed once every 8 hours.
+#> Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
+#> generated.
 
 nrow(big_iris)
 #> [1] 15000
 pryr::object_size(big_iris)
-#> 542,112 B
+#> 542.11 kB
 
 library(cachem)
 
@@ -500,11 +542,11 @@ bench::mark(
 #> # A tibble: 5 × 6
 #>   expression          min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>     <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache       22.94µs  39.86µs  15037.      2.23KB   0     
-#> 2 disk_cache       6.24ms   8.06ms    115.     18.44KB   0     
-#> 3 mongo_cache     47.74ms  88.24ms      8.40    2.52MB   0.442 
-#> 4 redis_cache     35.99ms 100.24ms      6.69  536.58KB   0.0675
-#> 5 postgres_cache   6.11ms  13.17ms     44.3   535.65KB   0
+#> 1 mem_cache        8.04µs   9.18µs   94621.     2.23KB   956.  
+#> 2 disk_cache        3.3ms    3.4ms     283.    16.19KB     0   
+#> 3 mongo_cache       9.6ms  13.02ms      71.1    2.52MB     4.54
+#> 4 redis_cache       4.6ms   5.69ms     167.   536.58KB     1.68
+#> 5 postgres_cache   1.42ms   1.93ms     419.   626.09KB     0
 
 bench::mark(
   mem_cache = mem_cache$get("iris"),
@@ -517,11 +559,11 @@ bench::mark(
 #> # A tibble: 5 × 6
 #>   expression          min   median `itr/sec` mem_alloc `gc/sec`
 #>   <bch:expr>     <bch:tm> <bch:tm>     <dbl> <bch:byt>    <dbl>
-#> 1 mem_cache       13.55µs  25.16µs  26185.          0B    0    
-#> 2 disk_cache       2.27ms   4.21ms    183.    535.09KB    1.85 
-#> 3 mongo_cache     52.98ms  86.59ms      9.35    2.06MB    0.492
-#> 4 redis_cache     26.77ms  65.73ms     11.3     1.03MB    0.230
-#> 5 postgres_cache  19.47ms  31.49ms     25.1   566.62KB    0.254
+#> 1 mem_cache        6.11µs   6.52µs  144938.         0B     0   
+#> 2 disk_cache     556.12µs 605.16µs    1503.   528.62KB    15.2 
+#> 3 mongo_cache      7.85ms  10.01ms      88.3    2.06MB     6.64
+#> 4 redis_cache      3.68ms   5.17ms     182.     1.03MB     3.71
+#> 5 postgres_cache   3.05ms   3.85ms     194.   566.62KB     3.97
 ```
 
 ``` bash

@@ -19,7 +19,8 @@ system("docker stop mongobank redisbank postgresbank")
 # bank
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/ThinkR-open/bank/workflows/R-CMD-check/badge.svg)](https://github.com/ThinkR-open/bank/actions)
+[![R-CMD-check](https://github.com/ThinkR-open/bank/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ThinkR-open/bank/actions/workflows/R-CMD-check.yaml)
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
 The goal of `{bank}` is to provide alternative backends for caching with `{memoise}` & `{shiny}`.
@@ -31,12 +32,36 @@ The goal of `{bank}` is to provide alternative backends for caching with `{memoi
 remotes::install_github("thinkr-open/bank")
 ```
 
+## About
+
+You're reading the doc about version : `r pkgload::pkg_version()`
+
+This README has been compiled on the
+
+```{r, eval = TRUE}
+Sys.time()
+```
+
+Here are the test & coverage results :
+
+```{r, eval = TRUE}
+devtools::check(quiet = TRUE)
+```
+
+```{r echo = FALSE, eval = TRUE}
+unloadNamespace("shinipsum")
+```
+
+```{r, eval = TRUE}
+covr::package_coverage()
+```
+
 ## Some things to know before starting
 
 ### Caching scope
 
-When using `{bank}` backends with `{shiny}`, caching will done at the app-level, in other words the cache is stored across sessions. 
-Be aware of this behavior if you have sensitive data inside your app, as this might imply data leakage. 
+When using `{bank}` backends with `{shiny}`, caching will done at the app-level, in other words the cache is stored across sessions.
+Be aware of this behavior if you have sensitive data inside your app, as this might imply data leakage.
 
 See `?shiny::bindCache`
 
@@ -44,7 +69,7 @@ See `?shiny::bindCache`
 
 ### Cache flushing
 
-As with any `{cachem}` compatible objects, the cache can be manually flushed using the `$reset()` method -- this will call `drop()` on MongoDb, `FLUSHALL` in Redis, & `DBI::dbRemoveTable()` + `DBI::dbCreateTable()` with Postgres. 
+As with any `{cachem}` compatible objects, the cache can be manually flushed using the `$reset()` method -- this will call `drop()` on MongoDb, `FLUSHALL` in Redis, & `DBI::dbRemoveTable()` + `DBI::dbCreateTable()` with Postgres.
 
 ```{r}
 library(bank)
@@ -67,19 +92,19 @@ maxmemory-policy allkeys-lru
 ```
 
 LRU (least recently used) will allow redis to flush the key based on when they were used.
-See <https://redis.io/topics/lru-cache>. 
+See <https://redis.io/topics/lru-cache>.
 
 MongoDB doesn't come with a LRU mechanism, but you can set data to be ephemeral with [TTL index](https://docs.mongodb.com/manual/core/index-ttl/) inside your collection.
 
-`{bank}` also tries to help with that by updating a `lastAccessed` date metadata field in Mongo whenever you `$get()` the key, meaning that you can implement your own caching strategy to evict least recently used cached objects. 
+`{bank}` also tries to help with that by updating a `lastAccessed` date metadata field in Mongo whenever you `$get()` the key, meaning that you can implement your own caching strategy to evict least recently used cached objects.
 
 ### Postgre limitation
 
-Postgre `bytea` column can only store up to 1GB elements, so you can't write a cache that's > 1GB. 
+Postgre `bytea` column can only store up to 1GB elements, so you can't write a cache that's > 1GB.
 
 ## Backends
 
-Note that if you want to use `{bank}` in a `{shiny}` app: 
+Note that if you want to use `{bank}` in a `{shiny}` app:
 
 - `renderCachedPlot()` require `{shiny}` version 1.5.0 or higher
 
@@ -95,21 +120,21 @@ For now, the following backends are supported:
 
 ### Mongo
 
-Launching a container with mongo. 
+Launching a container with mongo.
 
 ```{bash}
-docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:3.4
+docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:4
 ```
 
 ```{r echo = FALSE, eval = TRUE}
-system("docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:3.4")
+system("docker run --rm --name mongobank -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:4")
 Sys.sleep(20)
 ```
 
 
 #### With `{memoise}`
 
-First, the `cache_mongo` can be used 
+First, the `cache_mongo` can be used
 
 ```{r eval = TRUE}
 library(memoise)
@@ -162,7 +187,7 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-As you can see, the first time you set the slider to a given value, it takes a little bit to compute. 
+As you can see, the first time you set the slider to a given value, it takes a little bit to compute.
 Then it's almost instantaneous.
 
 Let's try a more complex application:
@@ -278,7 +303,7 @@ generate_app(mongo_cache)
 
 #### Flushing MongoDB cache using LRU
 
-All keys registered to MongoDB comes with a `metadata.lastAccessed` parameter. 
+All keys registered to MongoDB comes with a `metadata.lastAccessed` parameter.
 Using this parameter, you'll be able to flush old cache if needed.
 
 ```{r eval = TRUE}
@@ -302,7 +327,7 @@ get_metadata(mongo)
 
 ### Redis
 
-Launching a container with redis. 
+Launching a container with redis.
 
 ```{bash}
 docker run --rm --name redisbank -d -p 6379:6379 redis:5.0.5 --requirepass bebopalula
@@ -360,7 +385,7 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-For the larger app: 
+For the larger app:
 
 ```{r}
 generate_app(redis_cache)
@@ -368,7 +393,7 @@ generate_app(redis_cache)
 
 ### Postgres
 
-Launching a container with postgres. 
+Launching a container with postgres.
 
 ```{bash}
 docker run --rm --name some-postgres -e POSTGRES_PASSWORD=mysecretpassword -d -p 5433:5432 postgres
@@ -431,7 +456,7 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
-For the larger app: 
+For the larger app:
 
 ```{r}
 generate_app(postgres_cache)
@@ -442,7 +467,7 @@ generate_app(postgres_cache)
 
 ### Benchmark
 
-As we are deporting the caching to an external DBMS, the query will of course be slower than using memory cache of disk cache. 
+As we are deporting the caching to an external DBMS, the query will of course be slower than using memory cache of disk cache.
 But this difference in speed comes with a simpler scalability of the caching, as several instances of the app can rely on the same caching backend without the need to be on the same machine.
 
 ```{r eval = TRUE}
