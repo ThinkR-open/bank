@@ -7,7 +7,6 @@
 #'
 #' @export
 #' @importFrom R6 R6Class
-#' @importFrom attempt stop_if_not
 #' @importFrom digest digest
 cache_sqlite <- R6::R6Class(
   "cache_sqlite",
@@ -49,7 +48,20 @@ cache_sqlite <- R6::R6Class(
 
       private$cache_table <- cache_table
 
-      if (!cache_table %in% DBI::dbListTables(private$interface)) {
+      if (cache_table %in% DBI::dbListTables(private$interface)) {
+        # Reusing an existing table: validate that the schema matches what
+        # cache_sqlite expects. Bail out early with a readable error rather
+        # than failing later inside an INSERT/SELECT.
+        cols <- DBI::dbListFields(private$interface, cache_table)
+        if (!setequal(cols, c("id", "cache"))) {
+          stop(
+            "Existing table `", cache_table, "` does not match the cache schema.",
+            "\nExpected columns: id, cache. Found: ",
+            paste(cols, collapse = ", "),
+            call. = FALSE
+          )
+        }
+      } else {
         DBI::dbCreateTable(
           private$interface,
           cache_table,
@@ -95,13 +107,23 @@ cache_sqlite <- R6::R6Class(
         error = function(e) structure(list(), class = "key_missing")
       )
     },
-    #' @description Set a key in the cache.
+    #' @description Set a key in the cache. If the key already exists, its
+    #'   value is overwritten (matching the {memoise} cache contract).
     #' @param key key name.
     #' @param value value to store.
     #' @return used for side effect.
     set = function(key, value) {
-      if (!self$has_key(key)) {
-        blob <- serialize(value, NULL)
+      blob <- serialize(value, NULL)
+      if (self$has_key(key)) {
+        DBI::dbExecute(
+          private$interface,
+          sprintf(
+            "UPDATE %s SET cache = ? WHERE id = ?;",
+            private$cache_table
+          ),
+          params = list(list(blob), key)
+        )
+      } else {
         DBI::dbExecute(
           private$interface,
           sprintf(

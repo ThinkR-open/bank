@@ -39,3 +39,45 @@ test_that("missing key returns a key_missing sentinel", {
   res <- sqlite_cache$get("nope")
   expect_s3_class(res, "key_missing")
 })
+
+test_that("set() overwrites an existing key", {
+  skip_if_not_installed("RSQLite")
+
+  sqlite_cache <- cache_sqlite$new(dbname = ":memory:")
+  sqlite_cache$set("k", "first")
+  sqlite_cache$set("k", "second")
+  expect_equal(sqlite_cache$get("k"), "second")
+  expect_length(sqlite_cache$keys(), 1L)
+})
+
+test_that("opening an existing table with a foreign schema errors clearly", {
+  skip_if_not_installed("RSQLite")
+  skip_if_not_installed("DBI")
+
+  path <- tempfile(fileext = ".sqlite")
+  on.exit(unlink(path), add = TRUE)
+  con <- DBI::dbConnect(RSQLite::SQLite(), dbname = path)
+  DBI::dbExecute(con, "CREATE TABLE bankrcache (foo TEXT, bar TEXT);")
+  DBI::dbDisconnect(con)
+
+  expect_error(
+    cache_sqlite$new(dbname = path),
+    regexp = "does not match the cache schema"
+  )
+})
+
+test_that("file-backed sqlite cache persists across sessions", {
+  skip_if_not_installed("RSQLite")
+
+  path <- tempfile(fileext = ".sqlite")
+  on.exit(unlink(path), add = TRUE)
+
+  c1 <- cache_sqlite$new(dbname = path)
+  c1$set("alpha", list(x = 1L, y = 2L))
+  rm(c1)
+  gc()
+
+  c2 <- cache_sqlite$new(dbname = path)
+  expect_true(c2$has_key("alpha"))
+  expect_equal(c2$get("alpha"), list(x = 1L, y = 2L))
+})

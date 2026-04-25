@@ -111,7 +111,8 @@ the value stored under \code{key}, or an object of class
 \if{html}{\out{<a id="method-cache_sqlite-set"></a>}}
 \if{latex}{\out{\hypertarget{method-cache_sqlite-set}{}}}
 \subsection{Method \code{set()}}{
-Set a key in the cache.
+Set a key in the cache. If the key already exists, its
+value is overwritten (matching the {memoise} cache contract).
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{cache_sqlite$set(key, value)}\if{html}{\out{</div>}}
 }
