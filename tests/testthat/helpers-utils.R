@@ -54,18 +54,24 @@ test_them_all <- function(cache_obj) {
   )
 }
 
-if (!requireNamespace("redux", quietly = TRUE)) {
-  install.packages("redux")
+# Optional backend deps. They are only useful for the docker-backed
+# integration tests (Redis / Mongo / Postgres). Failure to install them
+# (e.g. on a sandbox without a compiler or repo access) must not crash the
+# whole test run — cache_sqlite is a pure-R backend that needs none of
+# them, and individual tests already skip_if_not_installed().
+maybe_install <- function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    tryCatch(
+      install.packages(pkg),
+      error = function(e) message("Could not install ", pkg, ": ", conditionMessage(e)),
+      warning = function(w) message("Could not install ", pkg, ": ", conditionMessage(w))
+    )
+  }
 }
-if (!requireNamespace("mongolite", quietly = TRUE)) {
-  install.packages("mongolite")
-}
-if (!requireNamespace("DBI", quietly = TRUE)) {
-  install.packages("DBI")
-}
-if (!requireNamespace("RPostgres", quietly = TRUE)) {
-  install.packages("RPostgres")
-}
+maybe_install("redux")
+maybe_install("mongolite")
+maybe_install("DBI")
+maybe_install("RPostgres")
 
 withr::defer(
   {

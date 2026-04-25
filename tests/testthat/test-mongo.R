@@ -1,5 +1,7 @@
 test_that("cache_redis works", {
   skip_on_ci()
+  skip_if_not_installed("mongolite")
+  if (Sys.which("docker") == "") skip("docker not available")
   system("docker run --rm --name mongobankunittest -d -p 27066:27017 -e MONGO_INITDB_ROOT_USERNAME=bebop -e MONGO_INITDB_ROOT_PASSWORD=aloula mongo:4")
   Sys.sleep(10)
 
